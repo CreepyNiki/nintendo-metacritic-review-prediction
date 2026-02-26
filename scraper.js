@@ -1,4 +1,3 @@
-// javascript
 const puppeteer = require('puppeteer');
 
 async function detectLang(text) {
@@ -48,11 +47,34 @@ async function extractReviewsFromPage(page) {
     });
 }
 
+async function getMetadata(userPage) {
+        const browser = await puppeteer.launch();
+        const page = await browser.newPage();
+        await page.goto(userPage, { waitUntil: 'networkidle2' });
+        const averageUserScore = await page.evaluate(() => {
+            const scoreText = document.querySelector('.c-scoreOverview_avgScoreText')?.textContent?.trim() || '';
+            return parseFloat(scoreText) || null;
+        });
+        const games = await page.evaluate(() => {
+            const gameText = document.querySelector('.c-globalHeader_menu_subText');
+            return gameText ? gameText.textContent.trim() : '';
+        });
+    const scoreCountTexts = await page.evaluate(() =>
+        Array.from(document.querySelectorAll('.c-scoreCount_count')).map(n => (n?.textContent || '').trim())
+    );
+    const scoreCount = scoreCountTexts.map(t => {
+        const normalized = t.replace(`^\d+`, '');
+        return normalized ? parseInt(normalized, 10) : null;
+    });
+        await browser.close();
+        return { averageUserScore, games, scoreCount };
+}
+
 async function scrollToBottom(page) {
     await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
 }
 
-(async () => {
+async function collectReviews(metadata = true) {
     const browser = await puppeteer.launch();
     const page = await browser.newPage();
     await page.goto(URL);
@@ -74,17 +96,38 @@ async function scrollToBottom(page) {
                 if (review.rating < 4) {
                     if (negativeReviews <= 33) {
                         negativeReviews++;
-                        collected.push(review);
+                        if(metadata === true) {
+                            console.log(`Review von ${review.username}`);
+                            let userPage = `https://www.metacritic.com/user/${review.username}`;
+                            const metadata = await getMetadata(userPage);
+                            collected.push({ ...review, metadata });
+                        }else {
+                            collected.push(review);
+                        }
                     }
                 } else if (review.rating > 7) {
                     if (positiveReviews < 33) {
                         positiveReviews++;
-                        collected.push(review);
+                        if(metadata === true) {
+                            console.log(`Review von ${review.username}`);
+                            let userPage = `https://www.metacritic.com/user/${review.username}`;
+                            const metadata = await getMetadata(userPage);
+                            collected.push({ ...review, metadata });
+                        }else {
+                            collected.push(review);
+                        }
                     }
                 } else {
                     if (neutralReviews < 33) {
                         neutralReviews++;
-                        collected.push(review);
+                        if(metadata === true) {
+                            console.log(`Review von ${review.username}`);
+                            let userPage = `https://www.metacritic.com/user/${review.username}`;
+                            const metadata = await getMetadata(userPage);
+                            collected.push({ ...review, metadata });
+                        }else {
+                            collected.push(review);
+                        }
                     }
                 }
 
@@ -100,4 +143,6 @@ async function scrollToBottom(page) {
     console.log(collected);
 
     await browser.close();
-})();
+};
+
+collectReviews(metadata = true);
