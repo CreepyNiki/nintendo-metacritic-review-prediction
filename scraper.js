@@ -1,53 +1,22 @@
 // javascript
-const axios = require('axios');
-const cheerio = require('cheerio');
+const puppeteer = require('puppeteer');
 
 async function detectLang(text) {
     try {
         const mod = await import('eld');
         const eld = mod.default ?? mod.eld ?? mod;
-
         if (!eld.__eldLoaded) {
             if (typeof eld.load === 'function') {
                 await eld.load();
             }
             eld.__eldLoaded = true;
         }
-
         if (typeof eld.detect === 'function') return eld.detect(text);
         console.warn('eld: keine passende Erkennungs-API gefunden');
     } catch (err) {
         console.warn('eld import/usage failed:', err && err.message ? err.message : err);
     }
     return null;
-}
-
-async function fetchPage(url) {
-    try {
-        return await axios.get(url);
-    } catch (error) {
-        throw error;
-    }
-}
-
-async function getMetacriticData(url) {
-    const response = await fetchPage(url);
-    const $ = cheerio.load(response.data);
-
-    const containers = $('.c-pageProductReviews_row .c-siteReview');
-    const results = [];
-    containers.each((i, el) => {
-        const container = $(el);
-
-        const username = container.find('.c-siteReviewHeader_username').text().trim();
-        const rating = container.find('.c-siteReviewHeader_reviewScore').text().trim();
-        const date = container.find('.c-siteReview_reviewDate').text().trim();
-        const review = container.find('.c-siteReview_quote').text().trim();
-
-        results.push({ username, rating, date, review });
-    });
-
-    return results;
 }
 
 const games = [
@@ -65,40 +34,70 @@ const games = [
 
 const URL = `https://www.metacritic.com/game/${games[0]}/user-reviews/`;
 
+async function extractReviewsFromPage(page) {
+    return await page.evaluate(() => {
+        const nodes = Array.from(document.querySelectorAll('.c-pageProductReviews_row .c-siteReview'));
+        return nodes.map(n => {
+            const username = n.querySelector('.c-siteReviewHeader_username')?.textContent?.trim() || '';
+            const ratingText = n.querySelector('.c-siteReviewHeader_reviewScore')?.textContent?.trim() || '';
+            const rating = parseInt(ratingText.replace(/[^0-9]/g, ''), 10) || 0;
+            const date = n.querySelector('.c-siteReview_reviewDate')?.textContent?.trim() || '';
+            const review = n.querySelector('.c-siteReview_quote')?.textContent?.trim() || '';
+            return { username, rating, date, review };
+        });
+    });
+}
+
+async function scrollToBottom(page) {
+    await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+}
+
 (async () => {
-        const data = await getMetacriticData(URL);
+    const browser = await puppeteer.launch();
+    const page = await browser.newPage();
+    await page.goto(URL);
 
-        let languageFilteredData = [];
-        let negativeReviewCount = 0;
-        let neutralReviewCount = 0;
-        let positiveReviewCount = 0;
+    const collected = [];
+    let negativeReviews = 0;
+    let neutralReviews = 0;
+    let positiveReviews = 0;
 
+    while (!(negativeReviews >= 34 && neutralReviews >= 33 && positiveReviews >= 33)) {
+        
+        const reviews = await extractReviewsFromPage(page);
+        
+        for (const review of reviews) {
 
-        for (const review of data) {
-            const lang = await detectLang(review.review);
-            if(lang.language === 'en') {
-                if(review.rating < 4) {
-                    negativeReviewCount++;
-                    if(negativeReviewCount <= 33) {
-                    languageFilteredData.push(review);
+            const lang = await detectLang(review.review || '');
+            if (lang.language === 'en') {
+
+                if (review.rating < 4) {
+                    if (negativeReviews <= 33) {
+                        negativeReviews++;
+                        collected.push(review);
                     }
-                } else if(review.rating > 7) {
-                    if(positiveReviewCount < 33) {
-                    positiveReviewCount++;
-                    languageFilteredData.push(review);
+                } else if (review.rating > 7) {
+                    if (positiveReviews < 33) {
+                        positiveReviews++;
+                        collected.push(review);
                     }
                 } else {
-                    if(neutralReviewCount < 33) {
-                    neutralReviewCount++;
-                    languageFilteredData.push(review);
+                    if (neutralReviews < 33) {
+                        neutralReviews++;
+                        collected.push(review);
                     }
                 }
 
+                if (negativeReviews >= 34 && neutralReviews >= 33 && positiveReviews >= 33) break;
             }
-
         }
-        console.log(languageFilteredData);
-        console.log(negativeReviewCount);
-        console.log(neutralReviewCount);
-        console.log(positiveReviewCount);
+
+        await scrollToBottom(page);
+    }
+
+    console.log('Gefundene Reviews:', collected.length);
+    console.log('Negative:', negativeReviews, 'Neutral:', neutralReviews, 'Positive:', positiveReviews);
+    console.log(collected);
+
+    await browser.close();
 })();
