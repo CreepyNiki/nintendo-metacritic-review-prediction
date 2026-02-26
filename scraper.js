@@ -1,4 +1,24 @@
 const puppeteer = require('puppeteer');
+const fs = require('fs');
+
+const gameID = 9;
+
+const limit = 50;
+
+const games = [
+    'mario-kart-world',
+    'pokemon-black-version',
+    'the-legend-of-zelda-breath-of-the-wild',
+    'nintendo-switch-2-welcome-tour',
+    'new-super-mario-bros-u',
+    'super-mario-galaxy-2',
+    'pokemon-scarlet',
+    'super-mario-bros-wonder',
+    'mario-and-luigi-brothership',
+    'paper-mario-sticker-star',
+];
+
+const URL = `https://www.metacritic.com/game/${games[gameID]}/user-reviews/`;
 
 async function detectLang(text) {
     try {
@@ -17,21 +37,6 @@ async function detectLang(text) {
     }
     return null;
 }
-
-const games = [
-    'mario-kart-world',
-    'pokemon-black-version',
-    'the-legend-of-zelda-breath-of-the-wild',
-    'nintendo-switch-2-welcome-tour',
-    'new-super-mario-bros-u',
-    'super-mario-galaxy-2',
-    'pokemon-scarlet',
-    'super-mario-bros-wonder',
-    'mario-and-luigi-brothership',
-    'paper-mario-sticker-star',
-];
-
-const URL = `https://www.metacritic.com/game/${games[0]}/user-reviews/`;
 
 async function extractReviewsFromPage(page) {
     return await page.evaluate(() => {
@@ -66,8 +71,15 @@ async function getMetadata(userPage) {
         const normalized = t.replace(`^\d+`, '');
         return normalized ? parseInt(normalized, 10) : null;
     });
+
+    const scoreCounts = {
+        positive: scoreCount[0] ?? 0,
+        neutral:  scoreCount[1] ?? 0,
+        negative: scoreCount[2] ?? 0,
+    };
+
         await browser.close();
-        return { averageUserScore, games, scoreCount };
+        return { averageUserScore, games, scoreCounts };
 }
 
 async function scrollToBottom(page) {
@@ -84,7 +96,7 @@ async function collectReviews(metadata = true) {
     let neutralReviews = 0;
     let positiveReviews = 0;
 
-    while (!(negativeReviews >= 34 && neutralReviews >= 33 && positiveReviews >= 33)) {
+    while (!(negativeReviews >= limit && neutralReviews >= limit && positiveReviews >= limit)) {
         
         const reviews = await extractReviewsFromPage(page);
         
@@ -93,8 +105,10 @@ async function collectReviews(metadata = true) {
             const lang = await detectLang(review.review || '');
             if (lang.language === 'en') {
 
+                if(review.review === '[SPOILER ALERT: This review contains spoilers.]') continue;
+
                 if (review.rating < 4) {
-                    if (negativeReviews <= 33) {
+                    if (negativeReviews < limit) {
                         negativeReviews++;
                         if(metadata === true) {
                             console.log(`Review von ${review.username}`);
@@ -106,7 +120,7 @@ async function collectReviews(metadata = true) {
                         }
                     }
                 } else if (review.rating > 7) {
-                    if (positiveReviews < 33) {
+                    if (positiveReviews < limit) {
                         positiveReviews++;
                         if(metadata === true) {
                             console.log(`Review von ${review.username}`);
@@ -118,7 +132,7 @@ async function collectReviews(metadata = true) {
                         }
                     }
                 } else {
-                    if (neutralReviews < 33) {
+                    if (neutralReviews < limit) {
                         neutralReviews++;
                         if(metadata === true) {
                             console.log(`Review von ${review.username}`);
@@ -131,7 +145,7 @@ async function collectReviews(metadata = true) {
                     }
                 }
 
-                if (negativeReviews >= 34 && neutralReviews >= 33 && positiveReviews >= 33) break;
+                if (negativeReviews >= limit && neutralReviews >= limit && positiveReviews >= limit) break;
             }
         }
 
@@ -140,9 +154,12 @@ async function collectReviews(metadata = true) {
 
     console.log('Gefundene Reviews:', collected.length);
     console.log('Negative:', negativeReviews, 'Neutral:', neutralReviews, 'Positive:', positiveReviews);
-    console.log(collected);
-
     await browser.close();
+
+    const jsonFilePath = `data/${games[gameID]}${metadata ? '_with_metadata' : ''}.json`;
+    fs.writeFileSync(jsonFilePath, JSON.stringify(collected, null, 2));
+    console.log(`Daten in ${jsonFilePath} gespeichert.`);
+
 };
 
-collectReviews(metadata = true);
+collectReviews(metadata = false);
