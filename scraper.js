@@ -66,8 +66,39 @@ const games = [
 const URL = `https://www.metacritic.com/game/${games[0]}/user-reviews/`;
 
 (async () => {
-    console.log('Language Detection:', await detectLang('Hello, how are you?'));
+        const data = await getMetacriticData(URL);
 
-        // const data = await getMetacriticData(URL);
-        // console.log(data);
+        let languageFilteredData = [];
+        let negativeReviewCount = 0;
+        let neutralReviewCount = 0;
+        let positiveReviewCount = 0;
+
+
+        for (const review of data) {
+            const lang = await detectLang(review.review);
+            if(lang.language === 'en') {
+                if(review.rating < 4) {
+                    negativeReviewCount++;
+                    if(negativeReviewCount <= 33) {
+                    languageFilteredData.push(review);
+                    }
+                } else if(review.rating > 7) {
+                    if(positiveReviewCount < 33) {
+                    positiveReviewCount++;
+                    languageFilteredData.push(review);
+                    }
+                } else {
+                    if(neutralReviewCount < 33) {
+                    neutralReviewCount++;
+                    languageFilteredData.push(review);
+                    }
+                }
+
+            }
+
+        }
+        console.log(languageFilteredData);
+        console.log(negativeReviewCount);
+        console.log(neutralReviewCount);
+        console.log(positiveReviewCount);
 })();
