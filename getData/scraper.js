@@ -3,22 +3,24 @@ const fs = require('fs');
 
 const gameID = 9;
 
-const limit = 50;
+const limit = 40;
 
 const games = [
     'mario-kart-world',
-    'pokemon-black-version',
+    'animal-crossing-new-horizons',
     'the-legend-of-zelda-breath-of-the-wild',
-    'nintendo-switch-2-welcome-tour',
-    'new-super-mario-bros-u',
-    'super-mario-galaxy-2',
+    'pokemon-legends-z-a',
+    'nintendo-switch-sports',
+    'the-legend-of-zelda-tears-of-the-kingdom',
     'pokemon-scarlet',
-    'super-mario-bros-wonder',
-    'mario-and-luigi-brothership',
     'paper-mario-sticker-star',
+    'super-mario-party',
+    'super-smash-bros-ultimate',
 ];
 
 const URL = `https://www.metacritic.com/game/${games[gameID]}/user-reviews/`;
+
+const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 
 async function detectLang(text) {
     try {
@@ -39,17 +41,29 @@ async function detectLang(text) {
 }
 
 async function extractReviewsFromPage(page) {
-    return await page.evaluate(() => {
-        const nodes = Array.from(document.querySelectorAll('.c-pageProductReviews_row .c-siteReview'));
-        return nodes.map(n => {
-            const username = n.querySelector('.c-siteReviewHeader_username')?.textContent?.trim() || '';
-            const ratingText = n.querySelector('.c-siteReviewHeader_reviewScore')?.textContent?.trim() || '';
-            const rating = parseInt(ratingText.replace(/[^0-9]/g, ''), 10) || 0;
-            const date = n.querySelector('.c-siteReview_reviewDate')?.textContent?.trim() || '';
-            const review = n.querySelector('.c-siteReview_quote')?.textContent?.trim() || '';
-            return { username, rating, date, review };
+        return await page.evaluate(() => {
+
+            function getUsername(el) {
+                if (!el) return '';
+                for (const node of el.childNodes) {
+                    if (node.nodeType === Node.TEXT_NODE) {
+                        const txt = (node.textContent || '').replace(/\s+/g, ' ').trim();
+                        if (txt) return txt;
+                    }
+                }
+            }
+
+            const cards = Array.from(document.querySelectorAll('.review-card'));
+            return cards.map(card => {
+                const header = card.querySelector('.review-card__header') || card.querySelector('a.review-card__header') || card;
+                const username = getUsername(header) || '';
+                const ratingText = card.querySelector('.c-siteReviewHeader_reviewScore, .c-siteReviewScore, .c-siteReviewScore_background')?.textContent || '';
+                const rating = parseInt((ratingText.match(/\d+/) || ['0'])[0], 10) || 0;
+                const date = card.querySelector('.review-card__date, .c-siteReview_reviewDate')?.textContent?.trim() || '';
+                const review = card.querySelector('.review-card__quote, .c-siteReview_quote, .review-body, .review_body')?.textContent?.trim() || '';
+                return { username, rating, date, review };
+            });
         });
-    });
 }
 
 async function getMetadata(userPage) {
@@ -89,7 +103,7 @@ async function scrollToBottom(page) {
 async function collectReviews(metadata = true) {
     const browser = await puppeteer.launch();
     const page = await browser.newPage();
-    await page.goto(URL);
+    await page.goto(URL, { waitUntil: 'domcontentloaded' });
 
     const collected = [];
     let negativeReviews = 0;
@@ -97,15 +111,18 @@ async function collectReviews(metadata = true) {
     let positiveReviews = 0;
 
     while (!(negativeReviews >= limit && neutralReviews >= limit && positiveReviews >= limit)) {
-        
+
         const reviews = await extractReviewsFromPage(page);
-        
+
         for (const review of reviews) {
 
-            const lang = await detectLang(review.review || '');
-            if (lang.language === 'en') {
+             const lang = await detectLang(review.review || '');
+             if (lang.language === 'en') {
 
-                if(review.review === '[SPOILER ALERT: This review contains spoilers.]') continue;
+                 console.log(`Überprüfe Review von ${review.username} (Rating: ${review.rating}, Sprache: ${lang.language})`);
+                 if (collected.some(r => (r.username === review.username))) continue;
+
+                 if(review.review === '[SPOILER ALERT: This review contains spoilers.]') continue;
 
                 if (review.rating < 4) {
                     if (negativeReviews < limit) {
@@ -145,21 +162,24 @@ async function collectReviews(metadata = true) {
                     }
                 }
 
-                if (negativeReviews >= limit && neutralReviews >= limit && positiveReviews >= limit) break;
-            }
-        }
+                console.log(`Aktueller Stand - Negative: ${negativeReviews}, Neutral: ${neutralReviews}, Positive: ${positiveReviews}`);
+                 if (negativeReviews >= limit && neutralReviews >= limit && positiveReviews >= limit) break;
+             }
+         }
 
         await scrollToBottom(page);
-    }
 
-    console.log('Gefundene Reviews:', collected.length);
-    console.log('Negative:', negativeReviews, 'Neutral:', neutralReviews, 'Positive:', positiveReviews);
-    await browser.close();
+        await sleep(3000);
+     }
 
-    const jsonFilePath = `data/${games[gameID]}${metadata ? '_with_metadata' : ''}.json`;
-    fs.writeFileSync(jsonFilePath, JSON.stringify(collected, null, 2));
-    console.log(`Daten in ${jsonFilePath} gespeichert.`);
+     console.log('Gefundene Reviews:', collected.length);
+     console.log('Negative:', negativeReviews, 'Neutral:', neutralReviews, 'Positive:', positiveReviews);
+     await browser.close();
 
-};
+     const jsonFilePath = `../data/${games[gameID]}${metadata ? '_with_metadata' : ''}.json`;
+     fs.writeFileSync(jsonFilePath, JSON.stringify(collected, null, 2));
+     console.log(`Daten in ${jsonFilePath} gespeichert.`);
 
-collectReviews(metadata = false);
+ }
+
+ collectReviews(true);
