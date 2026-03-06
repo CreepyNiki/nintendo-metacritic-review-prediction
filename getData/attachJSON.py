@@ -18,7 +18,6 @@ def convert_lists_to_objects():
                 with open(full_path, 'w', encoding='utf-8') as f:
                     json.dump(wrapped, f, ensure_ascii=False, indent=2)
 
-
 if __name__ == "__main__":
 
     merged_with = {}
