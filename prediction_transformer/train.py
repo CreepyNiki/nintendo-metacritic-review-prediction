@@ -10,6 +10,7 @@ from sklearn.metrics import accuracy_score, f1_score
 ROOT = os.path.normpath(os.path.join(os.path.dirname(__file__), '..'))
 DATA_DIR = os.path.join(ROOT, 'data')
 MODELS_DIR = os.path.join(ROOT, 'prediction_transformer/models')
+shared_test_path = os.path.join(DATA_DIR, 'shared_test.json')
 os.makedirs(MODELS_DIR, exist_ok=True)
 
 MODEL_BASE = 'xlm-roberta-base'
@@ -60,22 +61,21 @@ def prepareData(reviews, metadata):
         Review: {reviews['review']}
         """
 
-def train_on_file(metadata = False):
+def train_on_file(metadata=False):
     if metadata:
         json_path = os.path.join(DATA_DIR, 'all_with_metadata.json')
         model_out = os.path.join(MODELS_DIR, 'model_with_metadata')
-        test_out = os.path.join(DATA_DIR, 'test_with_metadata.json')
         os.makedirs(model_out, exist_ok=True)
     else:
         json_path = os.path.join(DATA_DIR, 'all_without_metadata.json')
         model_out = os.path.join(MODELS_DIR, 'model_without_metadata')
-        test_out = os.path.join(DATA_DIR, 'test_without_metadata.json')
         os.makedirs(model_out, exist_ok=True)
+
+    test_out = shared_test_path
 
     def compute_metrics(eval_pred):
         logits, labels = eval_pred
         preds = np.argmax(logits, axis=1)
-
         return {
             "accuracy": accuracy_score(labels, preds),
             "f1": f1_score(labels, preds, average="weighted")
@@ -86,13 +86,15 @@ def train_on_file(metadata = False):
     reviews = prepare(items)
     print(f"Prepared {len(reviews)} game reviews for training")
 
+    test_reviews = load_json(shared_test_path)
+    test_set_ids = {json.dumps(r, sort_keys=True) for r in test_reviews}
+    train_reviews = [r for r in reviews if json.dumps(r, sort_keys=True) not in test_set_ids]
+    print(f"Using {len(train_reviews)} train and {len(test_reviews)} test reviews (from shared file)")
     train_reviews, test_reviews = train_test_split(reviews, test_size=0.25, random_state=42)
-    print(f"Split into {len(train_reviews)} train and {len(test_reviews)} test reviews")
-
     with open(test_out, 'w', encoding='utf-8') as f:
         json.dump(test_reviews, f, indent=2)
-
     print(f"Saved test data to {test_out}")
+    print(f"Split into {len(train_reviews)} train and {len(test_reviews)} test reviews")
 
     train_texts = [prepareData(review, metadata) for review in train_reviews]
     train_labels = [int(review['rating']) for review in train_reviews]
@@ -101,13 +103,14 @@ def train_on_file(metadata = False):
     encodings = tokenizer(train_texts, truncation=True, padding=True, max_length=512)
     train_dataset = SimpleDataset(encodings, train_labels)
 
-    # eval dataset
     eval_texts = [prepareData(review, metadata) for review in test_reviews]
     eval_labels = [int(review['rating']) for review in test_reviews]
     eval_encodings = tokenizer(eval_texts, truncation=True, padding=True, max_length=512)
     eval_dataset = SimpleDataset(eval_encodings, eval_labels)
 
-    model = AutoModelForSequenceClassification.from_pretrained(MODEL_BASE, ignore_mismatched_sizes=True, num_labels=11, problem_type="single_label_classification")
+    model = AutoModelForSequenceClassification.from_pretrained(
+        MODEL_BASE, ignore_mismatched_sizes=True, num_labels=11, problem_type="single_label_classification"
+    )
 
     training_args = TrainingArguments(
         output_dir=model_out,
@@ -136,7 +139,6 @@ def train_on_file(metadata = False):
     trainer.save_model(model_out)
     print(f"Saved trained model to {model_out}")
 
-if __name__ == '__main__':
-    print(torch.cuda.is_available())
-    # train_on_file(True)
-    train_on_file(True)
+if __name__ == "__main__":
+    train_on_file(metadata=True)
+    # train_on_file(metadata=False)

@@ -13,10 +13,7 @@ DATA_DIR = os.path.join(ROOT, "data")
 MODEL_BASE = "xlm-roberta-base"
 
 def load_json(metadata):
-    if metadata:
-        path = os.path.join(DATA_DIR, 'test_with_metadata.json')
-    else:
-        path = os.path.join(DATA_DIR, 'test_without_metadata.json')
+    path = os.path.join(DATA_DIR, 'shared_test.json')
     with open(path, encoding='utf-8') as f:
         j = json.load(f)
         return j
