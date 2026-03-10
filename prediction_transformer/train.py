@@ -139,4 +139,4 @@ def train_on_file(metadata = False):
 if __name__ == '__main__':
     print(torch.cuda.is_available())
     # train_on_file(True)
-    train_on_file(False)
+    train_on_file(True)
