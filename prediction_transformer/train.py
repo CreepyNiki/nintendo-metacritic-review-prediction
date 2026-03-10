@@ -4,6 +4,8 @@ import re
 from transformers import AutoTokenizer, AutoModelForSequenceClassification, AutoConfig, Trainer, TrainingArguments, DataCollatorWithPadding
 import torch
 from sklearn.model_selection import train_test_split
+import numpy as np
+from sklearn.metrics import accuracy_score, f1_score
 
 ROOT = os.path.normpath(os.path.join(os.path.dirname(__file__), '..'))
 DATA_DIR = os.path.join(ROOT, 'data')
@@ -24,7 +26,7 @@ class SimpleDataset(torch.utils.data.Dataset):
 
     def __getitem__(self, idx):
         item = {key: torch.tensor(val[idx]) for key, val in self.encodings.items()}
-        item['labels'] = torch.tensor(self.labels[idx])
+        item['labels'] = torch.tensor(self.labels[idx], dtype=torch.long)
         return item
 
     def __len__(self):
@@ -70,6 +72,15 @@ def train_on_file(metadata = False):
         test_out = os.path.join(DATA_DIR, 'test_without_metadata.json')
         os.makedirs(model_out, exist_ok=True)
 
+    def compute_metrics(eval_pred):
+        logits, labels = eval_pred
+        preds = np.argmax(logits, axis=1)
+
+        return {
+            "accuracy": accuracy_score(labels, preds),
+            "f1": f1_score(labels, preds, average="weighted")
+        }
+
     items = load_json(json_path)
     print(f"Loaded {len(items)} items from {json_path}")
     reviews = prepare(items)
@@ -84,7 +95,7 @@ def train_on_file(metadata = False):
     print(f"Saved test data to {test_out}")
 
     train_texts = [prepareData(review, metadata) for review in train_reviews]
-    train_labels = [float(review['rating']) for review in train_reviews]
+    train_labels = [int(review['rating']) for review in train_reviews]
 
     tokenizer = AutoTokenizer.from_pretrained(MODEL_BASE)
     encodings = tokenizer(train_texts, truncation=True, padding=True, max_length=512)
@@ -92,11 +103,11 @@ def train_on_file(metadata = False):
 
     # eval dataset
     eval_texts = [prepareData(review, metadata) for review in test_reviews]
-    eval_labels = [float(review['rating']) for review in test_reviews]
+    eval_labels = [int(review['rating']) for review in test_reviews]
     eval_encodings = tokenizer(eval_texts, truncation=True, padding=True, max_length=512)
     eval_dataset = SimpleDataset(eval_encodings, eval_labels)
 
-    model = AutoModelForSequenceClassification.from_pretrained(MODEL_BASE, ignore_mismatched_sizes=True, num_labels=1)
+    model = AutoModelForSequenceClassification.from_pretrained(MODEL_BASE, ignore_mismatched_sizes=True, num_labels=11, problem_type="single_label_classification")
 
     training_args = TrainingArguments(
         output_dir=model_out,
@@ -118,6 +129,7 @@ def train_on_file(metadata = False):
         train_dataset=train_dataset,
         eval_dataset=eval_dataset,
         data_collator=DataCollatorWithPadding(tokenizer),
+        compute_metrics=compute_metrics
     )
 
     trainer.train()

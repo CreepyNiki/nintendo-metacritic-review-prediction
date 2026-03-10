@@ -45,8 +45,6 @@ def predict(metadata=False):
 
     model = AutoModelForSequenceClassification.from_pretrained(
         MODEL_DIR,
-        num_labels=1,
-        problem_type="regression"
     ).to(device)
 
     model.eval()
@@ -65,14 +63,17 @@ def predict(metadata=False):
     print("Predicting...")
     with torch.no_grad():
         outputs = model(**encodings)
-        predictions = outputs.logits.squeeze().cpu().numpy()
+        logits = outputs.logits
+        predictions = torch.argmax(logits, dim=1).cpu().numpy()
 
     predictions = predictions * 10
 
     print("Sample predictions:", predictions[:10])
 
-    true_labels = [float(review['rating']) for review in test_data]
-    print("MAE:", mean_absolute_error(true_labels, predictions))
+    true_labels = [int(review['rating']) for review in test_data]
+
+    print("Classification Report:")
+    print(classification_report(true_labels, predictions, digits=4))
 
 if __name__ == "__main__":
     predict(False)
