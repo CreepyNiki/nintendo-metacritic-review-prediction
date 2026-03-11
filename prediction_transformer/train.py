@@ -55,18 +55,18 @@ def prepareData(review, metadata):
     if metadata:
         m = review["metadata"]
         return f"""
-        Review: {review['review']}
         Date: {review['date']}
         AverageUserScore: {m['averageUserScore']}
         GamesReviewed: {m['games']}
         PositiveReviews: {m['scoreCounts']['positive']}
         NeutralReviews: {m['scoreCounts']['neutral']}
         NegativeReviews: {m['scoreCounts']['negative']}
+        Review: {review['review']}
         """
     else:
         return f"""
-        Review: {review['review']}
         Date: {review['date']}
+        Review: {review['review']}
         """
 
 def score_to_class(score):
@@ -169,4 +169,5 @@ def train_on_file(metadata=False):
     print(f"Saved trained model to {model_out}")
 
 if __name__ == "__main__":
-    train_on_file(metadata=False)
+    train_on_file(False)
+    # train_on_file(True)

@@ -3,8 +3,6 @@ import os
 import torch
 from transformers import AutoTokenizer, AutoModelForSequenceClassification
 from sklearn.metrics import classification_report
-import numpy as _np
-import torch as _torch
 
 ROOT = os.path.normpath(os.path.join(os.path.dirname(__file__), '..'))
 
@@ -97,4 +95,5 @@ def predict(metadata=True):
     print(classification_report(true_labels, preds, zero_division=0))
 
 if __name__ == "__main__":
-    predict(metadata=False)
+    predict(False)
+    # predict(True)
