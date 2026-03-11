@@ -106,23 +106,32 @@ def train_on_file(metadata=False):
     print(f"Saved test data to {test_out}")
     print(f"Split into {len(train_reviews)} train and {len(test_reviews)} test reviews")
 
-    # Labelverteilung ausgeben
-    print(f"Training and testing label distribution:")
-    train_labels = [score_to_class(r['rating']) for r in train_reviews]
-    test_labels = [score_to_class(r['rating']) for r in test_reviews]
-    for i in range(5):
-        print(f"  Class {i}: Train={train_labels.count(i)}, Test={test_labels.count(i)}")
-
-    class_counts = [train_labels.count(i) for i in range(5)]
-    class_weights = [len(train_labels) / c for c in class_counts]
-    class_weights = torch.tensor(class_weights).to(DEVICE)
-
     train_texts = [prepareData(r, metadata) for r in train_reviews]
     eval_texts = [prepareData(r, metadata) for r in test_reviews]
 
     tokenizer = AutoTokenizer.from_pretrained(MODEL_BASE)
-    train_encodings = tokenizer(train_texts, truncation=True, max_length=512, padding=True)
-    eval_encodings = tokenizer(eval_texts, truncation=True, max_length=512, padding=True)
+    train_encodings = tokenizer(train_texts, truncation=True, max_length=512, padding=True, stride=128, return_overflowing_tokens=True)
+    eval_encodings = tokenizer(eval_texts, truncation=True, max_length=512, padding=True, stride=128, return_overflowing_tokens=True)
+
+    mapping = train_encodings.pop("overflow_to_sample_mapping")
+    eval_mapping = eval_encodings.pop("overflow_to_sample_mapping")
+
+    # Labelverteilung ausgeben
+    print(f"Training and testing label distribution:")
+    train_labels = [score_to_class(train_reviews[idx]["rating"]) for idx in mapping]
+    test_labels = [score_to_class(test_reviews[idx]["rating"]) for idx in eval_mapping]
+    for i in range(5):
+        print(f"  Class {i}: Train={train_labels.count(i)}, Test={test_labels.count(i)}")
+
+    # Klassen-Gewichte berechnen (für WeightedLossTrainer)
+    class_counts = [train_labels.count(i) for i in range(5)]
+    # Schütze vor Division durch 0
+    class_counts = [c if c > 0 else 1 for c in class_counts]
+    class_weights = [len(train_labels) / c for c in class_counts]
+    class_weights = torch.tensor(class_weights).to(DEVICE)
+
+
+
 
     train_dataset = SimpleDataset(train_encodings, train_labels)
     eval_dataset = SimpleDataset(eval_encodings, test_labels)
