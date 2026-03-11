@@ -14,29 +14,6 @@ MODEL_DIR_WITH_METADATA = os.path.join(ROOT, "prediction_transformer/models/mode
 
 MODEL_BASE = "roberta-base"
 
-def count_equals(labels, value):
-    if labels is None:
-        return 0
-
-    # Torch tensor
-    if _torch is not None and isinstance(labels, _torch.Tensor):
-        return int((labels == value).sum().item())
-
-    # NumPy array or array-like
-    if isinstance(labels, (_np.ndarray,)):
-        return int((_np.asarray(labels) == value).sum())
-
-    # Scalar (int/bool)
-    if isinstance(labels, (int, bool)):
-        return int(labels == value)
-
-    # Iterable (list, tuple, etc.)
-    try:
-        return sum(1 for x in labels if x == value)
-    except TypeError:
-        # Fallback: nicht iterierbar
-        return 0
-
 def load_json(metadata):
     if metadata:
         path = os.path.join(DATA_DIR, "test/test_with_metadata.json")
@@ -116,9 +93,6 @@ def predict(metadata=True):
     print("Pred counts" + (" with metadata:" if metadata else ":"))
     for i in range(5):
         print(f"  Class {i}: {sum(preds == i)}")
-    print("True counts" + (" with metadata:" if metadata else ":"))
-    for i in range(5):
-        print(f"  Class {i}: {count_equals(true_labels, i)}")
     print("Classification Report (5 Klassen: 0=sehr schlecht ... 4=sehr gut):")
     print(classification_report(true_labels, preds, zero_division=0))
 

@@ -12,10 +12,23 @@ MODELS_DIR = os.path.join(ROOT, 'prediction_transformer/models')
 os.makedirs(MODELS_DIR, exist_ok=True)
 
 MODEL_BASE = 'roberta-base'
+DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
 def load_json(path):
     with open(path, encoding='utf-8') as f:
         return json.load(f)
+
+class WeightedLossTrainer(Trainer):
+    def __init__(self, class_weights=None, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.class_weights = class_weights
+
+    def compute_loss(self, model, inputs, return_outputs=False, *args, **kwargs):
+        labels = inputs.pop("labels")
+        outputs = model(**inputs)
+        loss_fn = torch.nn.CrossEntropyLoss(weight=self.class_weights)
+        loss = loss_fn(outputs.logits, labels)
+        return (loss, outputs) if return_outputs else loss
 
 class SimpleDataset(torch.utils.data.Dataset):
     def __init__(self, encodings, labels):
@@ -56,7 +69,6 @@ def prepareData(review, metadata):
         Date: {review['date']}
         """
 
-# Mapping von Score zu 5 Klassen
 def score_to_class(score):
     score = int(score)
     if score <= 1:
@@ -83,34 +95,41 @@ def train_on_file(metadata=False):
     os.makedirs(model_out, exist_ok=True)
 
     items = load_json(json_path)
-    print(f"Loaded {len(items)} items from {json_path}")
     reviews = prepare(items)
+    print(f"Loaded {len(items)} items from {json_path}")
     print(f"Prepared {len(reviews)} game reviews for training")
 
     train_reviews, test_reviews = train_test_split(reviews, test_size=0.2, random_state=42)
     with open(test_out, 'w', encoding='utf-8') as f:
         json.dump(test_reviews, f, indent=2)
+
     print(f"Saved test data to {test_out}")
     print(f"Split into {len(train_reviews)} train and {len(test_reviews)} test reviews")
+
+    # Labelverteilung ausgeben
     print(f"Training and testing label distribution:")
+    train_labels = [score_to_class(r['rating']) for r in train_reviews]
+    test_labels = [score_to_class(r['rating']) for r in test_reviews]
     for i in range(5):
-        print(f"  Class {i}: Train={sum(score_to_class(r['rating'])==i for r in train_reviews)}, Test={sum(score_to_class(r['rating'])==i for r in test_reviews)}")
+        print(f"  Class {i}: Train={train_labels.count(i)}, Test={test_labels.count(i)}")
+
+    class_counts = [train_labels.count(i) for i in range(5)]
+    class_weights = [len(train_labels) / c for c in class_counts]
+    class_weights = torch.tensor(class_weights).to(DEVICE)
 
     train_texts = [prepareData(r, metadata) for r in train_reviews]
-    train_labels = [score_to_class(r['rating']) for r in train_reviews]
+    eval_texts = [prepareData(r, metadata) for r in test_reviews]
 
     tokenizer = AutoTokenizer.from_pretrained(MODEL_BASE)
-    encodings = tokenizer(train_texts, truncation=True, max_length=512, padding=True)
-    train_dataset = SimpleDataset(encodings, train_labels)
-
-    eval_texts = [prepareData(r, metadata) for r in test_reviews]
-    eval_labels = [score_to_class(r['rating']) for r in test_reviews]
+    train_encodings = tokenizer(train_texts, truncation=True, max_length=512, padding=True)
     eval_encodings = tokenizer(eval_texts, truncation=True, max_length=512, padding=True)
-    eval_dataset = SimpleDataset(eval_encodings, eval_labels)
+
+    train_dataset = SimpleDataset(train_encodings, train_labels)
+    eval_dataset = SimpleDataset(eval_encodings, test_labels)
 
     model = AutoModelForSequenceClassification.from_pretrained(
         MODEL_BASE, num_labels=5, problem_type="single_label_classification"
-    )
+    ).to(DEVICE)
 
     def compute_metrics(eval_pred):
         logits, labels = eval_pred
@@ -135,13 +154,14 @@ def train_on_file(metadata=False):
         fp16=True,
     )
 
-    trainer = Trainer(
+    trainer = WeightedLossTrainer(
         model=model,
         args=training_args,
         train_dataset=train_dataset,
         eval_dataset=eval_dataset,
         data_collator=DataCollatorWithPadding(tokenizer),
-        compute_metrics=compute_metrics
+        compute_metrics=compute_metrics,
+        class_weights=class_weights
     )
 
     trainer.train()
