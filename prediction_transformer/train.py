@@ -138,5 +138,5 @@ def train_on_file(metadata=False):
     print(f"Saved trained model to {model_out}")
 
 if __name__ == "__main__":
-    train_on_file(metadata=True)
-    # train_on_file(metadata=False)
+    # train_on_file(metadata=True)
+    train_on_file(metadata=False)
