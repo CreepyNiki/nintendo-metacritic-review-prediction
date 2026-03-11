@@ -14,7 +14,10 @@ DATA_DIR = os.path.join(ROOT, "data")
 MODEL_BASE = "xlm-roberta-base"
 
 def load_json(metadata):
-    path = os.path.join(DATA_DIR, 'shared_test.json')
+    if(metadata):
+        path = os.path.join(DATA_DIR, "test/test_with_metadata.json")
+    else:
+        path = os.path.join(DATA_DIR, "test/test_without_metadata.json")
     with open(path, encoding='utf-8') as f:
         j = json.load(f)
         return j
@@ -81,4 +84,5 @@ def predict(metadata=True):
     print(classification_report(true_labels, predictions, zero_division=0))
 
 if __name__ == "__main__":
+    predict(True)
     predict(False)
