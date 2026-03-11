@@ -64,12 +64,12 @@ def train_on_file(metadata=False):
     if metadata:
         json_path = os.path.join(DATA_DIR, 'all_with_metadata.json')
         model_out = os.path.join(MODELS_DIR, 'model_with_metadata')
-        test_out = os.path.join(MODELS_DIR, 'test_with_metadata.json')
+        test_out = os.path.join(DATA_DIR, 'test/test_with_metadata.json')
         os.makedirs(model_out, exist_ok=True)
     else:
         json_path = os.path.join(DATA_DIR, 'all_without_metadata.json')
         model_out = os.path.join(MODELS_DIR, 'model_without_metadata')
-        test_out = os.path.join(MODELS_DIR, 'test_without_metadata.json')
+        test_out = os.path.join(DATA_DIR, 'test/test_without_metadata.json')
         os.makedirs(model_out, exist_ok=True)
 
     def compute_metrics(eval_pred):
@@ -138,5 +138,5 @@ def train_on_file(metadata=False):
     print(f"Saved trained model to {model_out}")
 
 if __name__ == "__main__":
-    train_on_file(metadata=False)
+    train_on_file(metadata=True)
     # train_on_file(metadata=False)
