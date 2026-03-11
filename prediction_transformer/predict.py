@@ -2,87 +2,125 @@ import json
 import os
 import torch
 from transformers import AutoTokenizer, AutoModelForSequenceClassification
-from sklearn.metrics import classification_report, mean_absolute_error
+from sklearn.metrics import classification_report
+import numpy as _np
+import torch as _torch
 
 ROOT = os.path.normpath(os.path.join(os.path.dirname(__file__), '..'))
 
-GOLDSTANDARD_PATH = os.path.join(ROOT, "model_with_metadata")
-MODEL_DIR = os.path.join(ROOT, "prediction_transformer/models/model_without_metadata")
-MODEL_DIR_WITH_METADATA = os.path.join(ROOT, "prediction_transformer/models/model_with_metadata")
 DATA_DIR = os.path.join(ROOT, "data")
+MODEL_DIR = os.path.join(ROOT, "prediction_transformer/models/model_without_metadata_5class")
+MODEL_DIR_WITH_METADATA = os.path.join(ROOT, "prediction_transformer/models/model_with_metadata_5class")
 
-MODEL_BASE = "xlm-roberta-base"
+MODEL_BASE = "roberta-base"
+
+def count_equals(labels, value):
+    if labels is None:
+        return 0
+
+    # Torch tensor
+    if _torch is not None and isinstance(labels, _torch.Tensor):
+        return int((labels == value).sum().item())
+
+    # NumPy array or array-like
+    if isinstance(labels, (_np.ndarray,)):
+        return int((_np.asarray(labels) == value).sum())
+
+    # Scalar (int/bool)
+    if isinstance(labels, (int, bool)):
+        return int(labels == value)
+
+    # Iterable (list, tuple, etc.)
+    try:
+        return sum(1 for x in labels if x == value)
+    except TypeError:
+        # Fallback: nicht iterierbar
+        return 0
 
 def load_json(metadata):
-    if(metadata):
+    if metadata:
         path = os.path.join(DATA_DIR, "test/test_with_metadata.json")
     else:
         path = os.path.join(DATA_DIR, "test/test_without_metadata.json")
     with open(path, encoding='utf-8') as f:
-        j = json.load(f)
-        return j
+        return json.load(f)
 
-def prepareData(reviews, metadata):
+def prepareData(review, metadata):
     if metadata:
-        m = reviews["metadata"]
+        m = review["metadata"]
         return f"""
-        Date: {reviews['date']}
+        Review: {review['review']}
+        Date: {review['date']}
         AverageUserScore: {m['averageUserScore']}
         GamesReviewed: {m['games']}
         PositiveReviews: {m['scoreCounts']['positive']}
         NeutralReviews: {m['scoreCounts']['neutral']}
         NegativeReviews: {m['scoreCounts']['negative']}
-        Review: {reviews['review']}
         """
     else:
         return f"""
-        Date: {reviews['date']}
-        Review: {reviews['review']}
+        Review: {review['review']}
+        Date: {review['date']}
         """
+
+# Score → 5-Klassen Mapping
+def score_to_class(score):
+    score = int(score)
+    if score <= 1:
+        return 0  # sehr schlecht
+    elif score <= 3:
+        return 1  # schlecht
+    elif score <= 6:
+        return 2  # mittel
+    elif score <= 8:
+        return 3  # gut
+    else:  # 9-10
+        return 4  # sehr gut
 
 def predict(metadata=True):
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
     tokenizer = AutoTokenizer.from_pretrained(MODEL_BASE)
 
-    if(metadata):
-        model = AutoModelForSequenceClassification.from_pretrained(MODEL_DIR_WITH_METADATA)
-    else:
-        model = AutoModelForSequenceClassification.from_pretrained(MODEL_DIR)
-
+    model_path = MODEL_DIR_WITH_METADATA if metadata else MODEL_DIR
+    model = AutoModelForSequenceClassification.from_pretrained(model_path)
     model.to(device)
     model.eval()
 
     test_data = load_json(metadata)
+    print("Test size:", len(test_data))
 
-    print("test size: " + str(len(test_data)))
-
-    texts = [prepareData(review, metadata) for review in test_data]
-
+    texts = [prepareData(r, metadata) for r in test_data]
     encodings = tokenizer(
-        texts, truncation=True, max_length=512, padding=True, return_tensors="pt")
+        texts, truncation=True, max_length=512, padding=True, return_tensors="pt"
+    )
 
     encodings = {k: v.to(device) for k, v in encodings.items()}
 
     with torch.no_grad():
         outputs = model(**encodings)
         logits = outputs.logits
-        predictions = torch.argmax(logits, dim=1).cpu().numpy()
+        preds = torch.argmax(logits, dim=1).cpu().numpy()
 
-    predictions = predictions.astype(int)
+    # True Labels in 5 Klassen
+    true_labels = [score_to_class(r['rating']) for r in test_data]
 
     print("First 10 predictions with reviews" + (" and metadata" if metadata else "") + ":")
     for i in range(min(10, len(test_data))):
         review = test_data[i]
         print(f"Review: {review['review']}")
-        print(f"True Rating: {review['rating']}, Predicted Rating: {predictions[i]}")
+        print(f"True Class: {true_labels[i]}, Predicted Class: {preds[i]}")
         print("-" * 50)
 
-    true_labels = [int(review['rating']) for review in test_data]
 
-    print("Classification Report:")
-    print(classification_report(true_labels, predictions, zero_division=0))
+    print("Pred counts" + (" with metadata:" if metadata else ":"))
+    for i in range(5):
+        print(f"  Class {i}: {sum(preds == i)}")
+    print("True counts" + (" with metadata:" if metadata else ":"))
+    for i in range(5):
+        print(f"  Class {i}: {count_equals(true_labels, i)}")
+    print("Classification Report (5 Klassen: 0=sehr schlecht ... 4=sehr gut):")
+    print(classification_report(true_labels, preds, zero_division=0))
 
 if __name__ == "__main__":
-    predict(True)
-    predict(False)
+    predict(metadata=False)
