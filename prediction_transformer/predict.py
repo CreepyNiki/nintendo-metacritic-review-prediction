@@ -6,6 +6,7 @@ from sklearn.metrics import classification_report, mean_absolute_error
 
 ROOT = os.path.normpath(os.path.join(os.path.dirname(__file__), '..'))
 
+GOLDSTANDARD_PATH = os.path.join(ROOT, "model_with_metadata")
 MODEL_DIR = os.path.join(ROOT, "prediction_transformer/models/model_without_metadata")
 MODEL_DIR_WITH_METADATA = os.path.join(ROOT, "prediction_transformer/models/model_with_metadata")
 DATA_DIR = os.path.join(ROOT, "data")
@@ -77,7 +78,7 @@ def predict(metadata=True):
     true_labels = [int(review['rating']) for review in test_data]
 
     print("Classification Report:")
-    print(classification_report(true_labels, predictions, digits=4, zero_division=0))
+    print(classification_report(true_labels, predictions, zero_division=0))
 
 if __name__ == "__main__":
-    predict(True)
+    predict(False)
