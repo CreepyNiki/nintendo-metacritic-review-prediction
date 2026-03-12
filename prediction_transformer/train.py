@@ -21,8 +21,6 @@ random.seed(seed)
 np.random.seed(seed)
 torch.manual_seed(seed)
 torch.cuda.manual_seed_all(seed)
-torch.backends.cudnn.deterministic = True
-torch.backends.cudnn.benchmark = False
 
 def load_json(path):
     with open(path, encoding='utf-8') as f:
@@ -89,7 +87,7 @@ def score_to_class(score):
         return 2
     elif score <= 8:
         return 3
-    else:  # 9-10
+    else:
         return 4
 
 def train_on_file(metadata=False):
@@ -126,22 +124,16 @@ def train_on_file(metadata=False):
     mapping = train_encodings.pop("overflow_to_sample_mapping")
     eval_mapping = eval_encodings.pop("overflow_to_sample_mapping")
 
-    # Labelverteilung ausgeben
     print(f"Training and testing label distribution:")
     train_labels = [score_to_class(train_reviews[idx]["rating"]) for idx in mapping]
     test_labels = [score_to_class(test_reviews[idx]["rating"]) for idx in eval_mapping]
     for i in range(5):
         print(f"  Class {i}: Train={train_labels.count(i)}, Test={test_labels.count(i)}")
 
-    # Klassen-Gewichte berechnen (für WeightedLossTrainer)
     class_counts = [train_labels.count(i) for i in range(5)]
-    # Schütze vor Division durch 0
     class_counts = [c if c > 0 else 1 for c in class_counts]
     class_weights = [len(train_labels) / c for c in class_counts]
     class_weights = torch.tensor(class_weights).to(DEVICE)
-
-
-
 
     train_dataset = SimpleDataset(train_encodings, train_labels)
     eval_dataset = SimpleDataset(eval_encodings, test_labels)
@@ -162,7 +154,7 @@ def train_on_file(metadata=False):
 
     training_args = TrainingArguments(
         output_dir=model_out,
-        num_train_epochs=5,
+        num_train_epochs=3,
         per_device_train_batch_size=8,
         per_device_eval_batch_size=8,
         learning_rate=2e-5,
@@ -171,7 +163,7 @@ def train_on_file(metadata=False):
         eval_strategy="epoch",
         weight_decay=0.01,
         fp16=True,
-        seed=seed
+        seed=seed,
     )
 
     trainer = WeightedLossTrainer(
@@ -179,9 +171,8 @@ def train_on_file(metadata=False):
         args=training_args,
         train_dataset=train_dataset,
         eval_dataset=eval_dataset,
-        data_collator=DataCollatorWithPadding(tokenizer),
         compute_metrics=compute_metrics,
-        class_weights=class_weights
+        class_weights=class_weights,
     )
 
     trainer.train()

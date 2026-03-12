@@ -1,4 +1,3 @@
-# python
 import json
 import os
 import torch
@@ -42,19 +41,18 @@ def prepareData(review, metadata):
         Date: {review['date']}
         """
 
-# Score → 5-Klassen Mapping
 def score_to_class(score):
     score = int(score)
     if score <= 1:
-        return 0  # sehr schlecht
+        return 0
     elif score <= 3:
-        return 1  # schlecht
+        return 1
     elif score <= 6:
-        return 2  # mittel
+        return 2
     elif score <= 8:
-        return 3  # gut
-    else:  # 9-10
-        return 4  # sehr gut
+        return 3
+    else:
+        return 4
 
 def predict(metadata=True):
     device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -72,7 +70,6 @@ def predict(metadata=True):
 
     texts = [prepareData(r, metadata) for r in test_data]
 
-    # Tokenize with overflow so lange Reviews in Chunks gesplittet werden
     encodings = tokenizer(
         texts,
         truncation=True,
@@ -83,54 +80,40 @@ def predict(metadata=True):
         return_overflowing_tokens=True
     )
 
-    # Mapping von Chunk-Index -> Original-Review-Index
     mapping = encodings.pop("overflow_to_sample_mapping")
-    # Behalte eine CPU-Kopie der input_ids zum Decodieren/debuggen
     input_ids_cpu = encodings["input_ids"].clone().cpu()
 
-    # Move rest to device
     encodings = {k: v.to(device) for k, v in encodings.items()}
 
     with torch.no_grad():
         outputs = model(**encodings)
         logits = outputs.logits
-        chunk_preds = torch.argmax(logits, dim=1).cpu().numpy()  # Vorhersagen pro Chunk (NumPy Array)
+        chunk_preds = torch.argmax(logits, dim=1).cpu().numpy()
 
-    # mapping kann ein Tensor sein -> Liste
     if not isinstance(mapping, list):
         try:
             mapping = mapping.tolist()
         except:
             mapping = list(mapping)
 
-    # Aggregiere Chunk-Vorhersagen pro Review
     review_predictions = defaultdict(list)
     for chunk_idx, sample_idx in enumerate(mapping):
         pred = int(chunk_preds[chunk_idx])
         review_predictions[sample_idx].append(pred)
 
-    # Erzeuge finale Vorhersagen (mittlerer Wert gerundet) in Testdaten-Reihenfolge
     final_preds = []
     for i in range(len(test_data)):
         preds_for_review = review_predictions.get(i, [])
         if not preds_for_review:
-            # Falls kein Chunk (sollte selten sein), Standardklasse 0
             final = 0
         else:
             final = int(round(sum(preds_for_review) / len(preds_for_review)))
         final_preds.append(final)
 
-        # Debug-Ausgabe für Reviews mit mehreren Chunks
         if len(preds_for_review) > 1:
-            chunk_texts = [
-                tokenizer.decode(input_ids_cpu[k], skip_special_tokens=True, clean_up_tokenization_spaces=True)
-                for k, sid in enumerate(mapping) if sid == i
-            ]
-            print(f"Chunks: {len(preds_for_review)} for review {i}")
-            print(f"Chunk content: {chunk_texts}")
             print(f"Review {i} has chunk predictions: {preds_for_review}")
             print(f"final prediction for review {i}: {final}")
-            print(f"True rating: {test_data[i]['rating']} -> class {score_to_class(test_data[i]['rating'])}")
+            print(f"{score_to_class(test_data[i]['rating'])}")
             print("-" * 50)
 
     true_labels = [score_to_class(r['rating']) for r in test_data]
