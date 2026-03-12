@@ -95,7 +95,7 @@ def predict():
         if len(preds_for_review) > 1:
             print(f"Review {i} has chunk predictions: {preds_for_review}")
             print(f"final prediction for review {i}: {final}")
-            print(f"{score_to_class(test_data[i]['rating'])}")
+            print(f"true rating: {score_to_class(test_data[i]['rating'])}")
             print("-" * 50)
 
     true_labels = [score_to_class(r['rating']) for r in test_data]

@@ -154,10 +154,10 @@ def train_on_file():
 
     training_args = TrainingArguments(
         output_dir=model_out,
-        num_train_epochs=3,
-        per_device_train_batch_size=8,
-        per_device_eval_batch_size=8,
-        learning_rate=2e-5,
+        num_train_epochs=20,
+        per_device_train_batch_size=32,
+        per_device_eval_batch_size=32,
+        learning_rate=1e-5,
         load_best_model_at_end=True,
         save_strategy="epoch",
         eval_strategy="epoch",

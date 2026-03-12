@@ -95,7 +95,6 @@ def predict():
         logits = outputs.logits
         chunk_preds = torch.argmax(logits, dim=1).cpu().numpy()
 
-    # Aggregiere Chunk-Vorhersagen pro Review
     review_predictions = defaultdict(list)
     for chunk_idx, review_idx in enumerate(chunk_to_review):
         pred = int(chunk_preds[chunk_idx])
@@ -113,7 +112,7 @@ def predict():
         if len(preds_for_review) > 1:
             print(f"Review {i} has chunk predictions: {preds_for_review}")
             print(f"final prediction for review {i}: {final}")
-            print(f"{score_to_class(test_data[i]['rating'])}")
+            print(f"true rating: {score_to_class(test_data[i]['rating'])}")
             print("-" * 50)
 
     true_labels = [score_to_class(r['rating']) for r in test_data]
