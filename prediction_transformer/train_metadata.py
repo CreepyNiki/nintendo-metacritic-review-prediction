@@ -59,11 +59,36 @@ def prepare(items):
         for review in reviews
     ]
 
-def prepareData(review):
-        return f"""
-        Date: {review['date']}
-        Review: {review['review']}
-        """
+def build_chunks_for_reviews(reviews, tokenizer, max_len=512):
+    chunk_texts = []
+    chunk_labels = []
+    special_tokens = tokenizer.num_special_tokens_to_add(pair=False)
+
+
+    for rev in reviews:
+        review_text = rev.get('review', '')
+        m = rev.get('metadata', {})
+        prefix = (
+            f"Date: {rev.get('date','')}. "
+            f"AverageUserScore: {m.get('averageUserScore','')}. "
+            f"GamesReviewed: {m.get('games','')}. "
+            f"PositiveReviews: {m.get('scoreCounts',{}).get('positive','')}. "
+            f"NeutralReviews: {m.get('scoreCounts',{}).get('neutral','')}. "
+            f"NegativeReviews: {m.get('scoreCounts',{}).get('negative','')}"
+        )
+
+        prefix_ids = tokenizer(prefix, add_special_tokens=False)['input_ids']
+        review_ids = tokenizer(review_text, add_special_tokens=False)['input_ids']
+
+        chunk_body_size = max_len - len(prefix_ids) - special_tokens
+
+        for start in range(0, len(review_ids), chunk_body_size):
+            body_slice = review_ids[start:start + chunk_body_size]
+            body_text = tokenizer.decode(body_slice, skip_special_tokens=True, clean_up_tokenization_spaces=True)
+            chunk_texts.append(prefix + " " + body_text)
+            chunk_labels.append(score_to_class(rev['rating']))
+
+    return chunk_texts, chunk_labels
 
 def score_to_class(score):
     score = int(score)
@@ -79,9 +104,9 @@ def score_to_class(score):
         return 4
 
 def train_on_file():
-    json_path = os.path.join(DATA_DIR, 'all_without_metadata.json')
-    model_out = os.path.join(MODELS_DIR, 'model_without_metadata')
-    test_out = os.path.join(DATA_DIR, 'test/test_without_metadata.json')
+    json_path = os.path.join(DATA_DIR, 'all_with_metadata.json')
+    model_out = os.path.join(MODELS_DIR, 'model_with_metadata')
+    test_out = os.path.join(DATA_DIR, 'test/test_with_metadata.json')
 
     os.makedirs(model_out, exist_ok=True)
 
@@ -97,21 +122,13 @@ def train_on_file():
     print(f"Saved test data to {test_out}")
     print(f"Split into {len(train_reviews)} train and {len(test_reviews)} test reviews")
 
-    train_texts = [prepareData(r) for r in train_reviews]
-    eval_texts = [prepareData(r) for r in test_reviews]
-
     tokenizer = AutoTokenizer.from_pretrained(MODEL_BASE)
-    train_encodings = tokenizer(train_texts, truncation=True, max_length=512, padding=True, stride=128, return_overflowing_tokens=True)
-    eval_encodings = tokenizer(eval_texts, truncation=True, max_length=512, padding=True, stride=128, return_overflowing_tokens=True)
 
-    mapping = train_encodings.pop("overflow_to_sample_mapping")
-    eval_mapping = eval_encodings.pop("overflow_to_sample_mapping")
+    train_chunk_texts, train_labels = build_chunks_for_reviews(train_reviews, tokenizer, max_len=512)
+    eval_chunk_texts, eval_labels = build_chunks_for_reviews(test_reviews, tokenizer, max_len=512)
 
-    print(f"Training and testing label distribution:")
-    train_labels = [score_to_class(train_reviews[idx]["rating"]) for idx in mapping]
-    test_labels = [score_to_class(test_reviews[idx]["rating"]) for idx in eval_mapping]
-    for i in range(5):
-        print(f"  Class {i}: Train={train_labels.count(i)}, Test={test_labels.count(i)}")
+    train_encodings = tokenizer(train_chunk_texts, truncation=True, max_length=512, padding=True)
+    eval_encodings = tokenizer(eval_chunk_texts, truncation=True, max_length=512, padding=True)
 
     class_counts = [train_labels.count(i) for i in range(5)]
     class_counts = [c if c > 0 else 1 for c in class_counts]
@@ -119,7 +136,7 @@ def train_on_file():
     class_weights = torch.tensor(class_weights).to(DEVICE)
 
     train_dataset = SimpleDataset(train_encodings, train_labels)
-    eval_dataset = SimpleDataset(eval_encodings, test_labels)
+    eval_dataset = SimpleDataset(eval_encodings, eval_labels)
 
     model = AutoModelForSequenceClassification.from_pretrained(
         MODEL_BASE, num_labels=5, problem_type="single_label_classification"

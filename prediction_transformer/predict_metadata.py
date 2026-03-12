@@ -9,21 +9,15 @@ from collections import defaultdict
 ROOT = os.path.normpath(os.path.join(os.path.dirname(__file__), '..'))
 
 DATA_DIR = os.path.join(ROOT, "data")
-MODEL_DIR = os.path.join(ROOT, "prediction_transformer/models/model_without_metadata")
-GOLDSTANDARD_PATH = os.path.join(DATA_DIR, "../model_without_metadata")
+MODEL_DIR = os.path.join(ROOT, "prediction_transformer/models/model_with_metadata")
+GOLDSTANDARD_PATH = os.path.join(DATA_DIR, "../model_with_metadata")
 
 MODEL_BASE = "roberta-base"
 
 def load_json():
-    path = os.path.join(DATA_DIR, "test/test_without_metadata.json")
+    path = os.path.join(DATA_DIR, "test/test_with_metadata.json")
     with open(path, encoding='utf-8') as f:
         return json.load(f)
-
-def prepareData(review):
-        return f"""
-        Date: {review['date']}
-        Review: {review['review']}
-        """
 
 def score_to_class(score):
     score = int(score)
@@ -38,11 +32,13 @@ def score_to_class(score):
     else:
         return 4
 
+
 def predict():
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
     tokenizer = AutoTokenizer.from_pretrained(MODEL_BASE)
 
+    # model_path = GOLDSTANDARD_PATH
     model_path = MODEL_DIR
     model = AutoModelForSequenceClassification.from_pretrained(model_path)
     model.to(device)
@@ -51,19 +47,46 @@ def predict():
     test_data = load_json()
     print("Test size:", len(test_data))
 
-    texts = [prepareData(r) for r in test_data]
+    chunk_texts = []
+    chunk_to_review = []
+
+    max_len = 512
+
+    special_tokens = tokenizer.num_special_tokens_to_add(pair=False)
+
+    for i, rev in enumerate(test_data):
+        review_text = rev.get('review', '')
+
+        m = rev.get('metadata', {})
+        prefix = (
+            f"Date: {rev.get('date','')}. "
+            f"AverageUserScore: {m.get('averageUserScore','')}. "
+            f"GamesReviewed: {m.get('games','')}. "
+            f"PositiveReviews: {m.get('scoreCounts',{}).get('positive','')}. "
+            f"NeutralReviews: {m.get('scoreCounts',{}).get('neutral','')}. "
+            f"NegativeReviews: {m.get('scoreCounts',{}).get('negative','')}"
+            )
+
+        # Prefix und Review seperat tokenisieren
+        prefix_ids = tokenizer(prefix, add_special_tokens=False)['input_ids']
+        review_ids = tokenizer(review_text, add_special_tokens=False)['input_ids']
+
+        chunk_body_size = max_len - len(prefix_ids) - special_tokens
+
+        for start in range(0, len(review_ids), chunk_body_size):
+            body_slice = review_ids[start:start + chunk_body_size]
+            body_text = tokenizer.decode(body_slice, skip_special_tokens=True, clean_up_tokenization_spaces=True)
+            chunk_text = prefix + " " + body_text
+            chunk_texts.append(chunk_text)
+            chunk_to_review.append(i)
 
     encodings = tokenizer(
-        texts,
+        chunk_texts,
         truncation=True,
-        max_length=512,
+        max_length=max_len,
         padding=True,
-        return_tensors="pt",
-        stride=128,
-        return_overflowing_tokens=True
+        return_tensors="pt"
     )
-
-    mapping = encodings.pop("overflow_to_sample_mapping")
 
     encodings = {k: v.to(device) for k, v in encodings.items()}
 
@@ -72,16 +95,11 @@ def predict():
         logits = outputs.logits
         chunk_preds = torch.argmax(logits, dim=1).cpu().numpy()
 
-    if not isinstance(mapping, list):
-        try:
-            mapping = mapping.tolist()
-        except:
-            mapping = list(mapping)
-
+    # Aggregiere Chunk-Vorhersagen pro Review
     review_predictions = defaultdict(list)
-    for chunk_idx, sample_idx in enumerate(mapping):
+    for chunk_idx, review_idx in enumerate(chunk_to_review):
         pred = int(chunk_preds[chunk_idx])
-        review_predictions[sample_idx].append(pred)
+        review_predictions[review_idx].append(pred)
 
     final_preds = []
     for i in range(len(test_data)):
@@ -101,18 +119,19 @@ def predict():
     true_labels = [score_to_class(r['rating']) for r in test_data]
     final_preds_arr = np.array(final_preds)
 
-    print("First 10 predictions with reviews"+ ":")
+    print("First 10 predictions with reviews" + ("and metadata") + ":")
     for i in range(min(10, len(test_data))):
         review = test_data[i]
         print(f"Review: {review['review']}")
         print(f"True Class: {true_labels[i]}, Predicted Class: {final_preds[i]}")
         print("-" * 50)
 
-    print("Pred counts: ")
+    print("Pred counts" + (" with metadata:"))
     for i in range(5):
         print(f"  Class {i}: {int((final_preds_arr == i).sum())}")
     print("Classification Report (5 Klassen: 0=sehr schlecht ... 4=sehr gut):")
     print(classification_report(true_labels, final_preds, zero_division=0))
+
 
 if __name__ == "__main__":
     predict()
