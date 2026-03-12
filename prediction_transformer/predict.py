@@ -10,8 +10,9 @@ from collections import defaultdict
 ROOT = os.path.normpath(os.path.join(os.path.dirname(__file__), '..'))
 
 DATA_DIR = os.path.join(ROOT, "data")
-MODEL_DIR = os.path.join(ROOT, "prediction_transformer/models/model_without_metadata_5class")
-MODEL_DIR_WITH_METADATA = os.path.join(ROOT, "prediction_transformer/models/model_with_metadata_5class")
+MODEL_DIR = os.path.join(ROOT, "prediction_transformer/models/model_without_metadata")
+MODEL_DIR_WITH_METADATA = os.path.join(ROOT, "prediction_transformer/models/model_with_metadata")
+GOLDSTANDARD_PATH = os.path.join(DATA_DIR, "../model_without_metadata")
 
 MODEL_BASE = "roberta-base"
 
@@ -60,6 +61,7 @@ def predict(metadata=True):
 
     tokenizer = AutoTokenizer.from_pretrained(MODEL_BASE)
 
+    # model_path = GOLDSTANDARD_PATH
     model_path = MODEL_DIR_WITH_METADATA if metadata else MODEL_DIR
     model = AutoModelForSequenceClassification.from_pretrained(model_path)
     model.to(device)

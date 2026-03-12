@@ -5,6 +5,7 @@ import torch
 from sklearn.model_selection import train_test_split
 import numpy as np
 from sklearn.metrics import accuracy_score, f1_score, recall_score, precision_score
+import random
 
 ROOT = os.path.normpath(os.path.join(os.path.dirname(__file__), '..'))
 DATA_DIR = os.path.join(ROOT, 'data')
@@ -13,6 +14,15 @@ os.makedirs(MODELS_DIR, exist_ok=True)
 
 MODEL_BASE = 'roberta-base'
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
+
+seed = 42
+
+random.seed(seed)
+np.random.seed(seed)
+torch.manual_seed(seed)
+torch.cuda.manual_seed_all(seed)
+torch.backends.cudnn.deterministic = True
+torch.backends.cudnn.benchmark = False
 
 def load_json(path):
     with open(path, encoding='utf-8') as f:
@@ -85,11 +95,11 @@ def score_to_class(score):
 def train_on_file(metadata=False):
     if metadata:
         json_path = os.path.join(DATA_DIR, 'all_with_metadata.json')
-        model_out = os.path.join(MODELS_DIR, 'model_with_metadata_5class')
+        model_out = os.path.join(MODELS_DIR, 'model_with_metadata')
         test_out = os.path.join(DATA_DIR, 'test/test_with_metadata.json')
     else:
         json_path = os.path.join(DATA_DIR, 'all_without_metadata.json')
-        model_out = os.path.join(MODELS_DIR, 'model_without_metadata_5class')
+        model_out = os.path.join(MODELS_DIR, 'model_without_metadata')
         test_out = os.path.join(DATA_DIR, 'test/test_without_metadata.json')
 
     os.makedirs(model_out, exist_ok=True)
@@ -153,14 +163,15 @@ def train_on_file(metadata=False):
     training_args = TrainingArguments(
         output_dir=model_out,
         num_train_epochs=5,
-        per_device_train_batch_size=16,
-        per_device_eval_batch_size=16,
+        per_device_train_batch_size=8,
+        per_device_eval_batch_size=8,
         learning_rate=2e-5,
         load_best_model_at_end=True,
         save_strategy="epoch",
         eval_strategy="epoch",
         weight_decay=0.01,
         fp16=True,
+        seed=seed
     )
 
     trainer = WeightedLossTrainer(
