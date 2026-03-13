@@ -87,34 +87,20 @@ def useModel(metadata, size, few_shot):
 
     if few_shot:
         system_prompt = (
-            "You are an expert to predict the score of a game review. Return the score as an integer."
-            "Predict the score from 0 to 4. (0 = very bad, 1 = bad, 2 = neutral, 3 = good, 4 = very good)"
+            "You are an expert to predict the score of a game review. "
+            "You will be given a review and you have to predict the score of the review on a scale from 0 to 10. Return the score as an int number. "
             "You should only output the score and nothing else."
             "Here are some examples:"
             "Review: 'Worst game I ever played. Save your money and don't buy it. Story is dull, combat is clunky as hell.: 0"
             "Review: 'Well this not the best Pokemon ever made, but it has clearly lots of potential for fun, and is at least interesting, not gonna talk about the dlc tho....', True Class: 2"
             "Review: 'What an amazing game. If this released on S2 hardware the reviews would be very different. One of the best Pokémon experiences I have had.', True Class: 4"
         )
-        # system_prompt = (
-        #     "You are an expert to predict the score of a game review. "
-        #     "You will be given a review and you have to predict the score of the review on a scale from 0 to 10. Return the score as an int number. "
-        #     "You should only output the score and nothing else."
-        #     "Here are some examples:"
-        #     "Review: 'Worst game I ever played. Save your money and don't buy it. Story is dull, combat is clunky as hell.: 0"
-        #     "Review: 'Well this not the best Pokemon ever made, but it has clearly lots of potential for fun, and is at least interesting, not gonna talk about the dlc tho....', True Class: 2"
-        #     "Review: 'What an amazing game. If this released on S2 hardware the reviews would be very different. One of the best Pokémon experiences I have had.', True Class: 4"
-        # )
     else:
         system_prompt = (
-            "You are an expert to predict the score of a game review. Return the score as an integer."
-            "Predict the score from 0 to 4. (0 = very bad, 1 = bad, 2 = neutral, 3 = good, 4 = very good)"
+            "You are an expert to predict the score of a game review. "
+            "You will be given a review and you have to predict the score of the review on a scale from 0 to 10. Return the score as an int number. "
             "You should only output the score and nothing else."
         )
-        # system_prompt = (
-        #     "You are an expert to predict the score of a game review. "
-        #     "You will be given a review and you have to predict the score of the review on a scale from 0 to 10. Return the score as an int number. "
-        #     "You should only output the score and nothing else."
-        # )
 
     headers = {
         'Content-Type': "application/json",
@@ -130,7 +116,9 @@ def useModel(metadata, size, few_shot):
                 {"role": "user", "content": text}
             ],
             "temperature": 0
+
         }
+        # print(text)
         body = json.dumps(payload, ensure_ascii=False).encode('utf-8')
 
         conn.request("POST", "/api/v1/chat/completions", body, headers)
@@ -142,7 +130,8 @@ def useModel(metadata, size, few_shot):
         c0 = j['choices'][0]
         content = c0['message'].get('content')
         match = re.search(r"\d+", content)
-        preds.append(int(match[0]))
+        match = score_to_class(match.group())
+        preds.append(match)
 
         if (idx + 1) % 10 == 0:
             print(f"Processed {idx+1}/{len(texts)} reviews")
@@ -162,4 +151,4 @@ def useModel(metadata, size, few_shot):
 
 
 if __name__ == "__main__":
-    useModel(True, 100, False)
+    useModel(False, 300, False)
