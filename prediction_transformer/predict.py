@@ -111,7 +111,6 @@ def predict():
     print("Pred counts: ")
     for i in range(5):
         print(f"  Class {i}: {int((final_preds_arr == i).sum())}")
-    print("Classification Report (5 Klassen: 0=sehr schlecht ... 4=sehr gut):")
     print(classification_report(true_labels, final_preds, zero_division=0))
 
 if __name__ == "__main__":
