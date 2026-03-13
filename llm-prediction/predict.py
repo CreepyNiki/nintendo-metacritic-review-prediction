@@ -4,6 +4,7 @@ from dotenv import load_dotenv
 import os
 from sklearn.metrics import classification_report
 import random
+import re
 
 load_dotenv()
 
@@ -43,19 +44,23 @@ def prepareData(review, metadata):
         """
 
 def score_to_class(score):
-    score = int(score)
-    if score <= 1:
+    """Map raw numeric score (likely 0-10) to classes 0..4."""
+    try:
+        s = int(score)
+    except Exception:
         return 0
-    elif score <= 3:
+    if s <= 1:
+        return 0
+    elif s <= 3:
         return 1
-    elif score <= 6:
+    elif s <= 6:
         return 2
-    elif score <= 8:
+    elif s <= 8:
         return 3
     else:
         return 4
 
-def useModel(metadata, size):
+def useModel(metadata, size, few_shot):
     if metadata:
         json_path = os.path.join(DATA_DIR, 'all_with_metadata.json')
     else:
@@ -64,7 +69,7 @@ def useModel(metadata, size):
     items = load_json(json_path)
     reviews = prepare(items)
     total_reviews = len(reviews)
-    
+
     k = min(size, total_reviews)
     rnd = random.Random(seed)
     selected_indices = rnd.sample(range(total_reviews), k)
@@ -80,11 +85,36 @@ def useModel(metadata, size):
     api_key = os.getenv("API_KEY")
     conn = http.client.HTTPSConnection("chat.kiconnect.nrw")
 
-    system_prompt = (
-        "You are an expert to predict the score of a game review. "
-        "You will be given a review and you have to predict the score of the review on a scale from 0 to 10. Return the score as an int number. "
-        "You should only output the score and nothing else."
-    )
+    if few_shot:
+        system_prompt = (
+            "You are an expert to predict the score of a game review. Return the score as an integer."
+            "Predict the score from 0 to 4. (0 = very bad, 1 = bad, 2 = neutral, 3 = good, 4 = very good)"
+            "You should only output the score and nothing else."
+            "Here are some examples:"
+            "Review: 'Worst game I ever played. Save your money and don't buy it. Story is dull, combat is clunky as hell.: 0"
+            "Review: 'Well this not the best Pokemon ever made, but it has clearly lots of potential for fun, and is at least interesting, not gonna talk about the dlc tho....', True Class: 2"
+            "Review: 'What an amazing game. If this released on S2 hardware the reviews would be very different. One of the best Pokémon experiences I have had.', True Class: 4"
+        )
+        # system_prompt = (
+        #     "You are an expert to predict the score of a game review. "
+        #     "You will be given a review and you have to predict the score of the review on a scale from 0 to 10. Return the score as an int number. "
+        #     "You should only output the score and nothing else."
+        #     "Here are some examples:"
+        #     "Review: 'Worst game I ever played. Save your money and don't buy it. Story is dull, combat is clunky as hell.: 0"
+        #     "Review: 'Well this not the best Pokemon ever made, but it has clearly lots of potential for fun, and is at least interesting, not gonna talk about the dlc tho....', True Class: 2"
+        #     "Review: 'What an amazing game. If this released on S2 hardware the reviews would be very different. One of the best Pokémon experiences I have had.', True Class: 4"
+        # )
+    else:
+        system_prompt = (
+            "You are an expert to predict the score of a game review. Return the score as an integer."
+            "Predict the score from 0 to 4. (0 = very bad, 1 = bad, 2 = neutral, 3 = good, 4 = very good)"
+            "You should only output the score and nothing else."
+        )
+        # system_prompt = (
+        #     "You are an expert to predict the score of a game review. "
+        #     "You will be given a review and you have to predict the score of the review on a scale from 0 to 10. Return the score as an int number. "
+        #     "You should only output the score and nothing else."
+        # )
 
     headers = {
         'Content-Type': "application/json",
@@ -98,7 +128,8 @@ def useModel(metadata, size):
             "messages": [
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": text}
-            ]
+            ],
+            "temperature": 0
         }
         body = json.dumps(payload, ensure_ascii=False).encode('utf-8')
 
@@ -110,7 +141,8 @@ def useModel(metadata, size):
         j = json.loads(data)
         c0 = j['choices'][0]
         content = c0['message'].get('content')
-        preds.append(score_to_class(content))
+        match = re.search(r"\d+", content)
+        preds.append(int(match[0]))
 
         if (idx + 1) % 10 == 0:
             print(f"Processed {idx+1}/{len(texts)} reviews")
@@ -130,4 +162,4 @@ def useModel(metadata, size):
 
 
 if __name__ == "__main__":
-    useModel(False, 20)
+    useModel(True, 100, False)
