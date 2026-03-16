@@ -193,7 +193,7 @@ def train_on_file():
     # Trainingsargumente werden definiert.
     training_args = TrainingArguments(
         output_dir=model_out,
-        num_train_epochs=20,
+        num_train_epochs=10,
         per_device_train_batch_size=32,
         per_device_eval_batch_size=32,
         learning_rate=1e-5,
