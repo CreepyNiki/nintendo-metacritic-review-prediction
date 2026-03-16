@@ -210,9 +210,9 @@ async function collectReviews(metadata = true) {
     await browser.close();
 
     // Speichern der Reviews in data Folder und passende Bennennung.
-    const jsonFilePath = `../data/${games[gameID]}${metadata ? '_with_metadata' : ''}.json`;
+    const jsonFilePath = `../data/games/${games[gameID]}${metadata ? '_with_metadata' : ''}.json`;
     fs.writeFileSync(jsonFilePath, JSON.stringify(collected, null, 2));
     console.log(`Daten in ${jsonFilePath} gespeichert.`);
 }
 
-collectReviews(true);
+collectReviews(false);
