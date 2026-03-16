@@ -10,8 +10,7 @@ import random
 # Definieren Pfade
 ROOT = os.path.normpath(os.path.join(os.path.dirname(__file__), '..'))
 DATA_DIR = os.path.join(ROOT, 'data')
-MODELS_DIR = os.path.join(ROOT, 'prediction_transformer/models')
-os.makedirs(MODELS_DIR, exist_ok=True)
+os.makedirs(ROOT, exist_ok=True)
 
 # Modell, dass gefinetuned wird.
 MODEL_BASE = 'roberta-base'
@@ -130,7 +129,7 @@ def score_to_class(score):
 def train_on_file():
     # Pfade werden definiert
     json_path = os.path.join(DATA_DIR, 'all_with_metadata.json')
-    model_out = os.path.join(MODELS_DIR, 'model_with_metadata')
+    model_out = os.path.join(ROOT, 'model_with_metadata')
     test_out = os.path.join(DATA_DIR, 'test/test_with_metadata.json')
 
     os.makedirs(model_out, exist_ok=True)

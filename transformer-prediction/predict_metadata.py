@@ -11,8 +11,7 @@ import seaborn as sns
 # Pfade werden definiert.
 ROOT = os.path.normpath(os.path.join(os.path.dirname(__file__), '..'))
 DATA_DIR = os.path.join(ROOT, "data")
-MODEL_DIR = os.path.join(ROOT, "prediction_transformer/models/model_without_metadata")
-GOLDSTANDARD_PATH = os.path.join(DATA_DIR, "../model_without_metadata")
+MODEL_DIR = os.path.join(ROOT, "model_with_metadata")
 
 # Modell, dass gefinetuned wurde.
 MODEL_BASE = "roberta-base"
@@ -40,16 +39,9 @@ def matrix(y_true, y_pred):
 
 # Kurze Hilfsfunktion, um JSON-Files einzulesen
 def load_json():
-    path = os.path.join(DATA_DIR, "test/test_without_metadata.json")
+    path = os.path.join(DATA_DIR, "test/test_with_metadata.json")
     with open(path, encoding='utf-8') as f:
         return json.load(f)
-
-# Funktion, die die Review-Text und das Datum in einem String zusammenfasst. Das Datum wird hierbei vor den Reviewtext geschrieben.
-def prepareData(review):
-        return f"""
-        Date: {review['date']}
-        Review: {review['review']}
-        """
 
 # Funktion, die den numerischen Score in eine von 5 Klassen umwandelt. Dabei werden die Scores in folgende Klassen eingeteilt:
 # 0: Score 0-1 -> sehr schlechte Bewertung
@@ -70,8 +62,9 @@ def score_to_class(score):
     else:
         return 4
 
+
 def predict():
-    # Tokenizer wird geladen
+
     tokenizer = AutoTokenizer.from_pretrained(MODEL_BASE)
 
     model_path = MODEL_DIR
@@ -84,16 +77,48 @@ def predict():
     test_data = load_json()
     print("Test size:", len(test_data))
 
-    # Die Daten werden in das richtige Format gebracht.
-    texts = [prepareData(r) for r in test_data]
+    chunk_texts = []
+    chunk_to_review = []
 
-    # Die Tokenizer Funktion wird aufgerufen.
-    # Dabei wird die maximale Länge auf 512 Tokens gesetzt, damit sie in das Modell passen.
-    # Außerdem wird die Option "return_overflowing_tokens" genutzt, damit zu lange Reviews in mehrere Chunks aufgeteilt werden können, die jeweils in das Modell passen.
-    encodings = tokenizer(texts, truncation=True, max_length=512, padding=True, return_tensors="pt", stride=128, return_overflowing_tokens=True)
+    # max_length ist hier eine eigene Variable. -> mehrfach benötigt
+    max_len = 512
 
-    # Die "overflow_to_sample_mapping" wird genutzt, um die Labels den Chunks zuordnen zu können. Diese wird nicht mehr benötigt.
-    mapping = encodings.pop("overflow_to_sample_mapping")
+    # spezielle Tokens, die das Modell benötigt, um den Anfang und das Ende eines Textes zu markieren, werden berücksichtigt.
+    special_tokens = tokenizer.num_special_tokens_to_add(pair=False)
+
+    for i, rev in enumerate(test_data):
+        review_text = rev.get('review', '')
+
+        m = rev.get('metadata', {})
+        # Präfix wird definiert.
+        prefix = (
+            f"Date: {rev.get('date','')}. "
+            f"AverageUserScore: {m.get('averageUserScore','')}. "
+            f"GamesReviewed: {m.get('games','')}. "
+            f"PositiveReviews: {m.get('scoreCounts',{}).get('positive','')}. "
+            f"NeutralReviews: {m.get('scoreCounts',{}).get('neutral','')}. "
+            f"NegativeReviews: {m.get('scoreCounts',{}).get('negative','')}"
+            )
+
+        # Prefix und Review seperat tokenisieren
+        prefix_ids = tokenizer(prefix, add_special_tokens=False)['input_ids']
+        review_ids = tokenizer(review_text, add_special_tokens=False)['input_ids']
+
+        # Berechnung der Anzahl der Tokens, die für den Review-Text in jedem Chunk übrig bleiben, nachdem der Präfix und die speziellen Tokens berücksichtigt wurden.
+        chunk_body_size = max_len - len(prefix_ids) - special_tokens
+
+        # Aufteilung des Review-Texts in Chunks, die in das Modell passen. -> Code von ChatGPT
+        for start in range(0, len(review_ids), chunk_body_size):
+            body_slice = review_ids[start:start + chunk_body_size]
+            body_text = tokenizer.decode(body_slice, skip_special_tokens=True, clean_up_tokenization_spaces=True)
+            # Hinzufügen des Präfixes zu jedem Chunk.
+            chunk_text = prefix + " " + body_text
+            chunk_texts.append(chunk_text)
+            chunk_to_review.append(i)
+
+    # Die Texte werden in Tokens umgewandelt.
+    # Diesmal ohne return_overflowing_tokens, da die Chunks bereits in der richtigen Länge zuvor manuell erstellt wurden.
+    encodings = tokenizer(chunk_texts, truncation=True, max_length=max_len, padding=True, return_tensors="pt")
 
     # Die encodings werden auf die GPU verschoben, wenn möglich.
     encodings = {k: v.to(device) for k, v in encodings.items()}
@@ -105,15 +130,13 @@ def predict():
         logits = outputs.logits
         # Predictions in numpy Array umwandeln.
         chunk_preds = torch.argmax(logits, dim=1).cpu().numpy()
-        # Mapping in Liste umwandeln.
-        mapping = mapping.tolist()
 
-    # Dictionary, um die Vorhersagen der Chunks den Reviews zuzuordnen. 
+    # Dictionary, um die Vorhersagen der Chunks den Reviews zuzuordnen.
     # Key: Index der Review, Value: Liste der Vorhersagen der Chunks, die zu dieser Review gehören.
     # Ided und Grundgerüst der Umsetzung von Claude
     review_predictions = defaultdict(list)
     # Iteration über die Liste.
-    for chunk_idx, review_idx in enumerate(mapping):
+    for chunk_idx, review_idx in enumerate(chunk_to_review):
         # Klassenvorhersage für einen Chunk.
         pred = int(chunk_preds[chunk_idx])
         # Angehängt an die Liste der Vorhersagen für die entsprechende Review.
@@ -159,6 +182,7 @@ def predict():
     majority_baseline(true_labels)
     matrix(true_labels, final_preds)
     print(mean_absolute_error(true_labels, final_preds))
+
 
 if __name__ == "__main__":
     predict()
