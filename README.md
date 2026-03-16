@@ -26,10 +26,9 @@ Die heruntergeladenen Ordner müssen in den Root Folder des Projektverzeichnisse
 
 ### Preprocessing (nur wenn neue Daten erzeugt werden sollen)
 
-1. Starten des Skripts **scraper.js** zum Scrapen der Daten von Metacritic. Vorher muss die jeweilige **GameID** gesetzt werden und ob Metadaten gescraped werden sollen.
+1. Starten des Skripts **scraper.js** zum Scrapen der Daten von Metacritic. Vorher muss die Variable **GameID** gesetzt werden und ausgewählt werden, ob Metadaten gescraped werden sollen oder nicht.
 
 <img width="201" height="18" alt="image" src="https://github.com/user-attachments/assets/feb213e0-bca5-4932-8ed9-d4f8ea134299" />
-
 
 
 | GameID | Games                                |
