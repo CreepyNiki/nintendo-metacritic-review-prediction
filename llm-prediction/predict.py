@@ -2,16 +2,31 @@ import http.client
 import json
 from dotenv import load_dotenv
 import os
-from sklearn.metrics import classification_report
+from sklearn.metrics import classification_report, confusion_matrix, mean_absolute_error
 import random
 import re
-
+from collections import Counter
+import matplotlib.pyplot as plt
+import seaborn as sns
 load_dotenv()
 
 seed = 42
 
 ROOT = os.path.normpath(os.path.join(os.path.dirname(__file__), '..'))
 DATA_DIR = os.path.join(ROOT, 'data')
+
+def majority_baseline(y_true):
+    most_common = Counter(y_true).most_common(1)[0][0]
+    y_pred_majority = [most_common] * len(y_true)
+    print(classification_report(y_true, y_pred_majority, zero_division=0))
+
+def matrix(y_true, y_pred):
+    cm = confusion_matrix(y_true, y_pred)
+    sns.heatmap(cm, annot=True, fmt="d")
+    plt.xlabel("Predicted")
+    plt.ylabel("True")
+    plt.title("Confusion Matrix")
+    plt.show()
 
 def load_json(path):
     with open(path, encoding='utf-8') as f:
@@ -44,7 +59,6 @@ def prepareData(review, metadata):
         """
 
 def score_to_class(score):
-    """Map raw numeric score (likely 0-10) to classes 0..4."""
     try:
         s = int(score)
     except Exception:
@@ -91,9 +105,12 @@ def useModel(metadata, size, few_shot):
             "You will be given a review and you have to predict the score of the review on a scale from 0 to 10. Return the score as an int number. "
             "You should only output the score and nothing else."
             "Here are some examples:"
-            "Review: 'Worst game I ever played. Save your money and don't buy it. Story is dull, combat is clunky as hell.: 0"
-            "Review: 'Well this not the best Pokemon ever made, but it has clearly lots of potential for fun, and is at least interesting, not gonna talk about the dlc tho....', True Class: 2"
-            "Review: 'What an amazing game. If this released on S2 hardware the reviews would be very different. One of the best Pokémon experiences I have had.', True Class: 4"
+            "Review: 'Worst game I ever played. Save your money and don't buy it. Story is dull, combat is clunky as hell."
+            "True Class: 0"
+            "Review: 'Well this not the best Pokemon ever made, but it has clearly lots of potential for fun, and is at least interesting, not gonna talk about the dlc tho....'"
+            "True Class: 2"
+            "Review: 'What an amazing game. If this released on S2 hardware the reviews would be very different. One of the best Pokémon experiences I have had.'"
+            "True Class: 4"
         )
     else:
         system_prompt = (
@@ -136,19 +153,22 @@ def useModel(metadata, size, few_shot):
         if (idx + 1) % 10 == 0:
             print(f"Processed {idx+1}/{len(texts)} reviews")
 
-    print("First 20 reviews with predictions und true labels:" + (" and metadata" if metadata else "") + ":")
-    for i in range(min(20, len(reviews))):
-        review = reviews[i]
-        print(f"Review: {review['review']}")
-        print(f"True Class: {true_labels[i]}, Predicted Class: {preds[i]}")
-        print("-" * 50)
+    # print("First 20 reviews with predictions und true labels:" + (" and metadata" if metadata else "") + ":")
+    # for i in range(min(20, len(reviews))):
+    #     review = reviews[i]
+    #     print(f"Review: {review['review']}")
+    #     print(f"True Class: {true_labels[i]}, Predicted Class: {preds[i]}")
+    #     print("-" * 50)
 
     print("Pred counts:")
     for i in range(5):
         print(f"  Class {i}: {preds.count(i)}")
 
     print(classification_report(true_labels, preds, zero_division=0))
+    majority_baseline(true_labels)
+    matrix(true_labels, preds)
+    print(mean_absolute_error(true_labels, preds))
 
 
 if __name__ == "__main__":
-    useModel(False, 300, False)
+    useModel(False, 20, False)
