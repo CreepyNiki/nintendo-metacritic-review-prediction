@@ -157,9 +157,11 @@ def useModel(metadata, size, few_shot):
             "Here are some examples:"
             "Review: 'Worst game I ever played. Save your money and don't buy it. Story is dull, combat is clunky as hell."
             "True Class: 0"
-            "Review: 'Well this not the best Pokemon ever made, but it has clearly lots of potential for fun, and is at least interesting, not gonna talk about the dlc tho....'"
-            "True Class: 5"
-            "Review: 'What an amazing game. If this released on S2 hardware the reviews would be very different. One of the best Pokémon experiences I have had.'"
+            "Just worse in every way than mk8deluxe. It's more expensive, has less features, has worse tracks, and a useless open world. Looks pretty though."
+            "True Class: 3"
+            "Review: 'Well this not the best Pokemon ever made, but it has clearly lots of potential for fun, and is at least interesting, not gonna talk about the dlc though.'"
+            "True Class: 6"
+            "Review: 'What an amazing game. One of the best Pokémon experiences I have had.'"
             "True Class: 10"
         )
     # Standard-Prompt
