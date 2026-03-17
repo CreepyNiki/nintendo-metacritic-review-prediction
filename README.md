@@ -16,8 +16,10 @@ Die Modelle sind in diesem Projekt nicht enthalten. Diese kann man über den unt
 ## Setup
 
 1. Herunterladen der Modelle von **Sciebo**
+   
+**Download-Link Modell ohne Metadaten**: https://uni-koeln.sciebo.de/s/ceNm2CGQg8wCsxK
 
-**Download-Link Modelle**: https://uni-koeln.sciebo.de/s/0p0Wj0WT4d04f03 
+**Download-Link Modell mit Metadaten**: https://uni-koeln.sciebo.de/s/FTLFfHRL6jcwcZJ
 
 2. Ordnerstruktur herstellen -> Entpacken der Files
 
