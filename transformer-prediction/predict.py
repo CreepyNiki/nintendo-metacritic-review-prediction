@@ -37,6 +37,25 @@ def matrix(y_true, y_pred):
     plt.title("Confusion Matrix")
     plt.show()
 
+# Funktion, mit welcher die Ergebnisse pro Spiel dargestellt werden können.
+def results_per_game(y_true, y_pred):
+    # Daten werden geladen.
+    test_data = load_json()
+    # Hole Spielnamen aus den Daten.
+    games = [r.get("game") for r in test_data]
+
+    # Eigene Liste pro Spiel wird erstellt.
+    per_game = defaultdict(list)
+    # Iterieren über die Spiele, die true Labels und die Predictions. -> Code von Copilot
+    for g, t, p in zip(games, y_true, y_pred):
+        per_game[g].append((t, p))
+        # Loggen der true Labels und Predictions pro Spiel.
+    for g, pairs in per_game.items():
+        true_labels = [t for t, _ in pairs]
+        preds = [p for _, p in pairs]
+        print(f"{g}:")
+        print(classification_report(true_labels, preds, zero_division=0))
+
 # Kurze Hilfsfunktion, um JSON-Files einzulesen
 def load_json():
     path = os.path.join(DATA_DIR, "test/test_without_metadata.json")
@@ -154,6 +173,7 @@ def predict():
 
     # Classification Report
     print(classification_report(true_labels, final_preds, zero_division=0))
+    results_per_game(true_labels, final_preds)
     # Hilfsfunktionen zur Darstellung der Ergebnisse
     majority_baseline(true_labels)
     matrix(true_labels, final_preds)

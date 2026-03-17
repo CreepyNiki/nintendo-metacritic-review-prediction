@@ -1,5 +1,6 @@
 import json
 import os
+from collections import OrderedDict
 
 # Pfad für die Daten.
 DATA_DIR = os.path.join(os.path.dirname(__file__), '..', 'data')
@@ -24,11 +25,23 @@ def convert_lists_to_objects():
                 with open(full_path, 'w', encoding='utf-8') as f:
                     json.dump(wrapped, f, ensure_ascii=False, indent=2)
 
+# Funktion, die Spiel in die JSON-Struktur einfügt.
+def writeGameIntoJSON(review, game_name):
+    out = OrderedDict()
+    for k, v in review.items():
+        out[k] = v
+        if k == 'date':
+            out['game'] = game_name
+    return out
+
+
+
 if __name__ == "__main__":
 
     merged_with = {}
     merged_without = {}
 
+    # Umwandeln von Listen in Objekte.
     convert_lists_to_objects()
 
     # Einlesen von JSON-Dateien.
@@ -62,6 +75,13 @@ if __name__ == "__main__":
                 merged_with[name] = reviews
             else:
                 merged_without[name] = reviews
+
+            enriched_reviews = [writeGameIntoJSON(r, name) for r in reviews]
+
+            if file.endswith('_with_metadata.json'):
+                merged_with[name] = enriched_reviews
+            else:
+                merged_without[name] = enriched_reviews
 
     # Outputfiles benannt.
     out_with = os.path.join(DATA_DIR, 'all_with_metadata.json')

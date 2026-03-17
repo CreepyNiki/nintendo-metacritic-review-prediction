@@ -5,7 +5,7 @@ import os
 from sklearn.metrics import classification_report, confusion_matrix, mean_absolute_error
 import random
 import re
-from collections import Counter
+from collections import Counter, defaultdict
 import matplotlib.pyplot as plt
 import seaborn as sns
 
@@ -37,9 +37,31 @@ def matrix(y_true, y_pred):
     plt.title("Confusion Matrix")
     plt.show()
 
+# Funktion, mit welcher die Ergebnisse pro Spiel dargestellt werden können.
+def results_per_game(y_true, y_pred, metadata, reviews):
+
+    # Hole Spielnamen aus den Daten.
+    games = [r.get("game") for r in reviews]
+
+    # Eigene Liste pro Spiel wird erstellt.
+    per_game = defaultdict(list)
+    # Iterieren über die Spiele, die true Labels und die Predictions. -> Code von Copilot
+    for g, t, p in zip(games, y_true, y_pred):
+        per_game[g].append((t, p))
+        # Loggen der true Labels und Predictions pro Spiel.
+    for g, pairs in per_game.items():
+        true_labels = [t for t, _ in pairs]
+        preds = [p for _, p in pairs]
+        print(f"{g}:")
+        print(classification_report(true_labels, preds, zero_division=0))
+
 # Hilfsfunktion, um JSON-Files einzulesen
-def load_json(path):
-    with open(path, encoding='utf-8') as f:
+def load_json(metadata):
+    if metadata:
+        json_path = os.path.join(DATA_DIR, 'all_with_metadata.json')
+    else:
+        json_path = os.path.join(DATA_DIR, 'all_without_metadata.json')
+    with open(json_path, encoding='utf-8') as f:
         return json.load(f)
 
 # Hilfsfunktion, die die Reviews aus den JSON-Dateien extrahiert. Die Reviews werden in einer Liste zurückgegeben.
@@ -97,13 +119,8 @@ def score_to_class(score):
 # Hauptfunktion, welche mit dem Modell kommuniziert und dessen Antworten sammelt.
 def useModel(metadata, size, few_shot):
     # Korrektes JSON-File wird ausgewählt.
-    if metadata:
-        json_path = os.path.join(DATA_DIR, 'all_with_metadata.json')
-    else:
-        json_path = os.path.join(DATA_DIR, 'all_without_metadata.json')
-
     # Daten werden geladen und vorbereitet
-    items = load_json(json_path)
+    items = load_json(metadata)
     reviews = prepare(items)
     total_reviews = len(reviews)
 
@@ -201,12 +218,12 @@ def useModel(metadata, size, few_shot):
             print(f"Processed {idx+1}/{len(texts)} reviews")
 
     # # Erste 10 Vorhersagen mit den Reviews loggen.
-    print("First 10 reviews with predictions und true labels:")
-    for i in range(min(10, len(reviews))):
-        review = reviews[i]
-        print(f"Review: {review['review']}")
-        print(f"True Class: {true_labels[i]}, Predicted Class: {preds[i]}")
-        print("-" * 50)
+    # print("First 10 reviews with predictions und true labels:")
+    # for i in range(min(10, len(reviews))):
+    #     review = reviews[i]
+    #     print(f"Review: {review['review']}")
+    #     print(f"True Class: {true_labels[i]}, Predicted Class: {preds[i]}")
+    #     print("-" * 50)
 
     # Übersicht, wie oft welche Klasse predictet wurde.
     print("Pred counts:")
@@ -215,10 +232,11 @@ def useModel(metadata, size, few_shot):
 
     # Classification Report
     print(classification_report(true_labels, preds, zero_division=0))
+    results_per_game(true_labels, preds, metadata, reviews)
     # Hilfsfunktionen zur Darstellung der Ergebnisse
     majority_baseline(true_labels)
     matrix(true_labels, preds)
     print(mean_absolute_error(true_labels, preds))
 
 if __name__ == "__main__":
-    useModel(False, 20, False)
+    useModel(False, 100, False)
