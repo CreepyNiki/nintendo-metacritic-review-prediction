@@ -158,9 +158,9 @@ def useModel(metadata, size, few_shot):
             "Review: 'Worst game I ever played. Save your money and don't buy it. Story is dull, combat is clunky as hell."
             "True Class: 0"
             "Review: 'Well this not the best Pokemon ever made, but it has clearly lots of potential for fun, and is at least interesting, not gonna talk about the dlc tho....'"
-            "True Class: 2"
+            "True Class: 5"
             "Review: 'What an amazing game. If this released on S2 hardware the reviews would be very different. One of the best Pokémon experiences I have had.'"
-            "True Class: 4"
+            "True Class: 10"
         )
     # Standard-Prompt
     else:
@@ -241,4 +241,4 @@ def useModel(metadata, size, few_shot):
     matrix(true_labels, preds)
 
 if __name__ == "__main__":
-    useModel(False, 1200, False)
+    useModel(False, 100, True)
