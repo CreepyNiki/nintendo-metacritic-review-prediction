@@ -51,7 +51,7 @@ Die heruntergeladenen Ordner müssen in den Root Folder des Projektverzeichnisse
 ### Training (nur wenn neue Modelle erzeugt werden sollen)
 Starten der Python Skripte **train.py** und/oder **train_metadata.py**, um die Modelle für Daten mit/ohne Metadaten zu trainieren.
 
-### Prediction
+### Prediction (obligatorisch)
 #### Transformer
 Starten der Python Skripte **predict.py** und/oder **predict_metadata.py** im Ordner **transformer-prediction**, um die Vorhersagen für Daten mit/ohne Metadaten durchzuführen.
 
