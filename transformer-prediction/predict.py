@@ -179,7 +179,7 @@ def predict():
     # Hilfsfunktionen zur Darstellung der Ergebnisse
     majority_baseline(true_labels)
     matrix(true_labels, final_preds)
-    print("MAE: " + mean_absolute_error(true_labels, final_preds))
+    print("MAE:", mean_absolute_error(true_labels, final_preds))
 
 if __name__ == "__main__":
     predict()

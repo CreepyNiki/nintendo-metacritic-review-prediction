@@ -237,8 +237,8 @@ def useModel(metadata, size, few_shot):
     results_per_game(true_labels, preds, metadata, reviews)
     # Hilfsfunktionen zur Darstellung der Ergebnisse
     majority_baseline(true_labels)
+    print("MAE:", mean_absolute_error(true_labels, preds))
     matrix(true_labels, preds)
-    print("MAE: " + mean_absolute_error(true_labels, preds))
 
 if __name__ == "__main__":
     useModel(False, 1200, False)
