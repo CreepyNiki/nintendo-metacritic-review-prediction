@@ -25,6 +25,7 @@ def majority_baseline(y_true):
     most_common = Counter(y_true).most_common(1)[0][0]
     y_pred_majority = [most_common] * len(y_true)
     # Berechnung auf Basis, dass alle Instanzen einer Klasse zugeordnet werden.
+    print("majority baseline:")
     print(classification_report(y_true, y_pred_majority, zero_division=0))
 
 # Funktion, welche die Confusion Matrix plottet.
@@ -172,12 +173,13 @@ def predict():
         print(f"  Class {i}: {int((final_preds_arr == i).sum())}")
 
     # Classification Report
+    print("Total:")
     print(classification_report(true_labels, final_preds, zero_division=0))
     results_per_game(true_labels, final_preds)
     # Hilfsfunktionen zur Darstellung der Ergebnisse
     majority_baseline(true_labels)
     matrix(true_labels, final_preds)
-    print(mean_absolute_error(true_labels, final_preds))
+    print("MAE: " + mean_absolute_error(true_labels, final_preds))
 
 if __name__ == "__main__":
     predict()
