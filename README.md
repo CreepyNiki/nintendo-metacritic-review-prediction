@@ -10,13 +10,13 @@ Es wurden dabei zwei Ansätze verglichen. Zum einen wurde ein [großer Transform
 
 Die Modell bewerteten die Reviews auf einer Skala von 0 bis 4, wobei 0 für sehr schlecht und 4 für sehr gut steht.
 
-| Rating | Bedeutung|
-| --|---------------|
-| 0 | sehr schlecht |
-| 1 | schlecht      |
-| 2 | neutral       |
-| 3 | gut           |
-| 4 | sehr gut      |
+| Rating | Bedeutung         |
+| --|------------------------|
+| 0 | sehr schlecht          |
+| 1 | schlecht               |
+| 2 | durchschnittlich       |
+| 3 | gut                    |   
+| 4 | sehr gut               |
 
 Als Datensatz wurden 1200 Reviews von Metacritic von 10 verschiedenen Nintendo Spielen genutzt.
 
