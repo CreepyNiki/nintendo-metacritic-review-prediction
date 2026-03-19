@@ -8,7 +8,7 @@ Diese Hausarbeit beschäftigt sich mit der Vorhersage von Nutzerbewertungen anha
 
 Es wurden dabei zwei Ansätze verglichen. Zum einen wurde ein [großer Transformer](https://huggingface.co/FacebookAI/roberta-base) genommen und auf die Aufgabe finegetuned. Zum anderen wurde ein [LLM](https://developers.openai.com/api/docs/models/gpt-oss-120b) (Openai GPT OSS 120B) mithilfe von [ki-connect-nrw](https://chat.kiconnect.nrw/app) durch Prompting genutzt. In der Hausarbeit werden die beiden Ergebnisse miteinander verglichen.
 
-Die Modell bewerteten die Reviews auf einer Skala von 0 bis 4, wobei 0 für sehr schlecht und 4 für sehr gut steht.
+Die Modell bewerteten die Reviews auf einer Skala von 0 bis 10, dieser wird aber auf eine Skala von 0-4 umgerechnet wobei 0 für sehr schlecht und 4 für sehr gut steht.
 
 | Rating | Bedeutung         |
 | --|------------------------|
