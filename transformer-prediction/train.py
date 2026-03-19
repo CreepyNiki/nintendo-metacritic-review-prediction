@@ -1,6 +1,6 @@
 import os
 import json
-from transformers import AutoTokenizer, AutoModelForSequenceClassification, Trainer, TrainingArguments, DataCollatorWithPadding
+from transformers import AutoTokenizer, AutoModelForSequenceClassification, Trainer, TrainingArguments
 import torch
 from sklearn.model_selection import train_test_split
 import numpy as np
