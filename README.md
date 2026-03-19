@@ -8,6 +8,16 @@ Diese Hausarbeit beschäftigt sich mit der Vorhersage von Nutzerbewertungen anha
 
 Es wurden dabei zwei Ansätze verglichen. Zum einen wurde ein [großer Transformer](https://huggingface.co/FacebookAI/roberta-base) genommen und auf die Aufgabe finegetuned. Zum anderen wurde ein [LLM](https://developers.openai.com/api/docs/models/gpt-oss-120b) (Openai GPT OSS 120B) mithilfe von [ki-connect-nrw](https://chat.kiconnect.nrw/app) durch Prompting genutzt. In der Hausarbeit werden die beiden Ergebnisse miteinander verglichen.
 
+Die Modell bewerteten die Reviews auf einer Skala von 0 bis 4, wobei 0 für sehr schlecht und 4 für sehr gut steht.
+
+| Rating | Bedeutung|
+| --|---------------|
+| 0 | sehr schlecht |
+| 1 | schlecht      |
+| 2 | neutral       |
+| 3 | gut           |
+| 4 | sehr gut      |
+
 Als Datensatz wurden 1200 Reviews von Metacritic von 10 verschiedenen Nintendo Spielen genutzt.
 
 Die Modelle sind in diesem Projekt nicht enthalten. Diese kann man über den untenstehenden Link herunterladen.
