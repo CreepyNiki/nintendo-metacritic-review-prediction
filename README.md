@@ -8,7 +8,7 @@ Im Zentrum der Untersuchung steht die automatische Vorhersage von Nutzerbewertun
 
 Es wurden dabei zwei Ansätze verfolgt und verglichen. Zum einen wurde ein vortrainiertes [Transformer-Modell](https://huggingface.co/FacebookAI/roberta-base) für die spezifische Aufgabe der Bewertungsprädiktion finegetuned. Zum anderen wurde ein [Large Language Model](https://developers.openai.com/api/docs/models/gpt-oss-120b) dessen Vorhersagen durch  Prompting erzeugt wurden. Dabei wurde das Modell Openai GPT OSS 120B verwendet, welches von [ki-connect-nrw](https://chat.kiconnect.nrw/app) bereitgestellt wurde.
 
-Die Vorhersage der Bewertungen erfolgte ursprünglich auf einer Skala von 0 bis 10, analog zur Darstellung auf Metacritic. Zur Vereinfachung der Klassifikation und zur Verbesserung der Vergleichbarkeit wurden diese Werte auf Skala von 0 bis 4 abgebildet, wobei die einzelnen Klassen folgende Bedeutungen annehmen:
+Die Vorhersage der Bewertungen erfolgte auf einer Skala von 0 bis 4, wobei die einzelnen Klassen folgende Bedeutungen annehmen:
 
 | Rating | Bedeutung         |
 | --|------------------------|
