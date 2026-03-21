@@ -1,14 +1,14 @@
 # nintendo-metacritic-review-prediction
 
-Computerlinguistisches Experiment von Niklas Halft an der Universität zu Köln im SM1 im Rahmen des Seminars Seminar Künstliche Intelligenz und die (digitale) Gesellschaft.
+Computerlinguistisches Experiment, das im Rahmen des Seminars **„Künstliche Intelligenz und die (digitale) Gesellschaft“** im SM1 an der Universität zu Köln durchgeführt wurde.
 
 Thema: **Automatische Vorhersage von Metacritic-Nutzerbewertungen anhand von Rezensionstexten**
 
-Diese Hausarbeit beschäftigt sich mit der Vorhersage von Nutzerbewertungen anhand deren Rezensionstexten. Hierbei wurde zur besseren Vergleichbarkeit der Fokus auf Nintendo Spiele gelegt. 
+Im Zentrum der Untersuchung steht die automatische Vorhersage von Nutzerbewertungen anhand von Rezensionstexten. Hierbei wurde zur besseren Vergleichbarkeit der Datensatz auf Videospiele eines einzelnen Publishers, nämlich Nintendo, beschränkt.
 
-Es wurden dabei zwei Ansätze verglichen. Zum einen wurde ein [großer Transformer](https://huggingface.co/FacebookAI/roberta-base) genommen und auf die Aufgabe finegetuned. Zum anderen wurde ein [LLM](https://developers.openai.com/api/docs/models/gpt-oss-120b) (Openai GPT OSS 120B) mithilfe von [ki-connect-nrw](https://chat.kiconnect.nrw/app) durch Prompting genutzt. In der Hausarbeit werden die beiden Ergebnisse miteinander verglichen.
+Es wurden dabei zwei Ansätze verfolgt und verglichen. Zum einen wurde ein vortrainiertes [Transformer-Modell](https://huggingface.co/FacebookAI/roberta-base) für die spezifische Aufgabe der Bewertungsprädiktion finegetuned. Zum anderen wurde ein [Large Language Model](https://developers.openai.com/api/docs/models/gpt-oss-120b) genutzt, dessen Vorhersagen durch  Prompting erzeugt wurden. Dabei wurde das Modell Openai GPT OSS 120B verwendet, welches von [ki-connect-nrw](https://chat.kiconnect.nrw/app) bereitgestellt wurde.
 
-Die Modell bewerteten die Reviews auf einer Skala von 0 bis 10, dieser wird aber auf eine Skala von 0-4 umgerechnet wobei 0 für sehr schlecht und 4 für sehr gut steht.
+Die Vorhersage der Bewertungen erfolgte auf einer Skala von 0 bis 4, wobei die einzelnen Klassen folgende Bedeutungen annehmen:
 
 | Rating | Bedeutung         |
 | --|------------------------|
@@ -18,12 +18,13 @@ Die Modell bewerteten die Reviews auf einer Skala von 0 bis 10, dieser wird aber
 | 3 | gut                    |   
 | 4 | sehr gut               |
 
-Als Datensatz wurden 1200 Reviews von Metacritic von 10 verschiedenen Nintendo Spielen genutzt.
+Als Datengrundlage dienten insgesamt 1200 Nutzerrezensionen von Metacritic von zehn verschiedenen Nintendo Spielen.
 
 Die Modelle sind in diesem Projekt nicht enthalten. Diese kann man über den untenstehenden Link herunterladen.
 
 
 ## Setup
+Das Projekt wurde mit Python 3.12 erstellt.
 
 1. Herunterladen der Modelle von **Sciebo**
    
