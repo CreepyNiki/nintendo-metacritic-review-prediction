@@ -6,7 +6,7 @@ Thema: **Automatische Vorhersage von Metacritic-Nutzerbewertungen anhand von Rez
 
 Im Zentrum der Untersuchung steht die automatische Vorhersage von Nutzerbewertungen anhand von Rezensionstexten. Hierbei wurde zur besseren Vergleichbarkeit der Datensatz auf Videospiele eines einzelnen Publishers, nämlich Nintendo, beschränkt.
 
-Es wurden dabei zwei Ansätze verfolgt und verglichen. Zum einen wurde ein vortrainiertes [Transformer-Modell](https://huggingface.co/FacebookAI/roberta-base) für die spezifische Aufgabe der Bewertungsprädiktion finegetuned. Zum anderen wurde ein [Large Language Model](https://developers.openai.com/api/docs/models/gpt-oss-120b) genutzt dessen Vorhersagen durch  Prompting erzeugt wurden. Dabei wurde das Modell Openai GPT OSS 120B verwendet, welches von [ki-connect-nrw](https://chat.kiconnect.nrw/app) bereitgestellt wurde.
+Es wurden dabei zwei Ansätze verfolgt und verglichen. Zum einen wurde ein vortrainiertes [Transformer-Modell](https://huggingface.co/FacebookAI/roberta-base) für die spezifische Aufgabe der Bewertungsprädiktion finegetuned. Zum anderen wurde ein [Large Language Model](https://developers.openai.com/api/docs/models/gpt-oss-120b) genutzt, dessen Vorhersagen durch  Prompting erzeugt wurden. Dabei wurde das Modell Openai GPT OSS 120B verwendet, welches von [ki-connect-nrw](https://chat.kiconnect.nrw/app) bereitgestellt wurde.
 
 Die Vorhersage der Bewertungen erfolgte auf einer Skala von 0 bis 4, wobei die einzelnen Klassen folgende Bedeutungen annehmen:
 
