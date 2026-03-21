@@ -222,7 +222,7 @@ def useModel(metadata, size, few_shot):
                 # Vorhersage wird in Liste gespeichert.
                 preds.append(match)
 
-                print(f"Processed review {idx+1}: {match}")
+                print(f"Processed review {idx+1}")
 
                 break
 
@@ -246,6 +246,7 @@ def useModel(metadata, size, few_shot):
     #     print(f"True Class: {true_labels[i]}, Predicted Class: {preds[i]}")
     #     print("-" * 50)
 
+
     # Übersicht, wie oft welche Klasse predictet wurde.
     print("Pred counts:")
     for i in range(5):
@@ -261,4 +262,4 @@ def useModel(metadata, size, few_shot):
     matrix(true_labels, preds)
 
 if __name__ == "__main__":
-    useModel(False, 200, False)
+    useModel(False, 1200, False)
