@@ -243,4 +243,4 @@ def useModel(metadata, size, few_shot):
     matrix(true_labels, preds)
 
 if __name__ == "__main__":
-    useModel(False, 100, True)
+    useModel(False, 100, False)
