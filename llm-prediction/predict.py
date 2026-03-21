@@ -8,6 +8,7 @@ import re
 from collections import Counter, defaultdict
 import matplotlib.pyplot as plt
 import seaborn as sns
+import time
 
 # Aufrufen .env File.
 load_dotenv()
@@ -144,9 +145,8 @@ def useModel(metadata, size, few_shot):
     # True_Labels werden extrahiert und in richtige Format mit 5 Kategorien gebracht.
     true_labels = [score_to_class(r.get('rating', 0)) for r in reviews]
 
-    # API-Key wird aus den Umgebungsvariablen geladen und Verbindung zum API-Endpunkt wird hergestellt.
+    # API-Key wird aus den Umgebungsvariablen geladen.
     api_key = os.getenv("API_KEY")
-    conn = http.client.HTTPSConnection("chat.kiconnect.nrw")
 
     # Few-Shot-Prompting
     if few_shot:
@@ -181,44 +181,62 @@ def useModel(metadata, size, few_shot):
     # Hinzufügen der Texte zur Payload.
     # Auswahl des Modells.
     for idx, text in enumerate(texts):
-        payload = {
-            "model": "Openai GPT OSS 120B",
-            "messages": [
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": text}
-            ],
-            "temperature": 0
+        while True:
+            try:
+                conn = http.client.HTTPSConnection("chat.kiconnect.nrw", timeout=3)
 
-        }
-        # # Den Prompt loggen, um zu sehen, wie er aussieht.
-        # print(text)
+                payload = {
+                    "model": "Openai GPT OSS 120B",
+                    "messages": [
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": text}
+                    ],
+                    "temperature": 0
+                }
+                # # Den Prompt loggen, um zu sehen, wie er aussieht.
+                # print(text)
 
-        # Payload wird in JSON-Format umgewandelt und in UTF-8 kodiert.
-        body = json.dumps(payload, ensure_ascii=False).encode('utf-8')
+                # Payload wird in JSON-Format umgewandelt und in UTF-8 kodiert.
+                body = json.dumps(payload, ensure_ascii=False).encode('utf-8')
 
-        # Request an das Modell wird gesendet.
-        conn.request("POST", "/api/v1/chat/completions", body, headers)
-        # Antwort wird gelesen und dekodiert.
-        res = conn.getresponse()
-        data = res.read().decode('utf-8')
+                # Request an das Modell wird gesendet.
+                conn.request("POST", "/api/v1/chat/completions", body, headers)
+                # Antwort wird gelesen und dekodiert.
+                res = conn.getresponse()
+                data = res.read().decode('utf-8')
 
-        # Antwort wird in JSON-Format umgewandelt.
-        j = json.loads(data)
-        # Die Antwort des Modells wird extrahiert.
+                # Connection wird zwischendurch geschlossen, damit nicht zu viele offene Verbindungen entstehen.
+                conn.close()
 
-        # Diese Zahl wird dann in die entsprechende Klasse umgewandelt und in der Liste preds gespeichert.
-        c0 = j['choices'][0]
-        content = c0['message'].get('content')
-        # Regex wird verwendet, um die Zahl aus der Antwort zu extrahieren.
-        match = re.search(r"\d+", content)
-        # Zahl wird in richtige Format mit 5 Kategorien gebracht.
-        match = score_to_class(match.group())
-        # Vorhersage wird in Liste gespeichert.
-        preds.append(match)
+                # Antwort wird in JSON-Format umgewandelt.
+                j = json.loads(data)
+                # Die Antwort des Modells wird extrahiert.
 
-        # Alle 10 Reviews wird geloggt, wie viele Reviews bereits verarbeitet wurden.
-        if (idx + 1) % 10 == 0:
-            print(f"Processed {idx+1}/{len(texts)} reviews")
+                # Diese Zahl wird dann in die entsprechende Klasse umgewandelt und in der Liste preds gespeichert.
+                content = j['choices'][0]['message'].get('content')
+
+                # Regex wird verwendet, um die Zahl aus der Antwort zu extrahieren.
+                match = re.search(r"\d+", content)
+                # Zahl wird in richtige Format mit 5 Kategorien gebracht.
+                match = score_to_class(match.group())
+                # Vorhersage wird in Liste gespeichert.
+                preds.append(match)
+
+                print(f"Processed review {idx+1}: {match}")
+
+                break
+
+            except Exception as e:
+                # Am Ende trat leider häufiger ein Reading Error auf -> deshalb ErrorHandling
+                print(f"[ERROR] {e} → retrying...")
+
+                try:
+                    # Connection wird geschlossen, falls diese nicht gelesen werden kann
+                    conn.close()
+                except:
+                    pass
+                # Timer, damit nicht sofort wieder eine Anfrage gesendet wird.
+                time.sleep(1)
 
     # # Erste 10 Vorhersagen mit den Reviews loggen.
     # print("First 10 reviews with predictions und true labels:")
@@ -243,4 +261,4 @@ def useModel(metadata, size, few_shot):
     matrix(true_labels, preds)
 
 if __name__ == "__main__":
-    useModel(False, 1200, False)
+    useModel(False, 200, False)
